@@ -66,10 +66,10 @@ Output:
 
 ```lua
 export type Root = {
-    name: string,
     --- @minimum 0
     --- @maximum 120
-    age?: number,
+    age: number?,
+    name: string,
 }
 ```
 
