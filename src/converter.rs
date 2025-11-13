@@ -106,12 +106,20 @@ impl SchemaConverter {
             return Ok(result);
         }
 
-        // Handle enum and const
+        // Handle enum
         if let Some(enum_values) = &obj.enum_ {
-            return Ok(self.convert_enum(enum_values));
+            self.generated_types.insert(name.to_string());
+            let indent_str = "    ".repeat(indent);
+            let union = self.convert_enum(enum_values);
+            return Ok(format!("{}export type {} = {}", indent_str, name, union));
         }
+
+        // Handle const
         if let Some(const_value) = &obj.const_ {
-            return Ok(self.convert_const(const_value));
+            self.generated_types.insert(name.to_string());
+            let indent_str = "    ".repeat(indent);
+            let literal = self.convert_const(const_value);
+            return Ok(format!("{}export type {} = {}", indent_str, name, literal));
         }
 
         // Handle type-specific conversion

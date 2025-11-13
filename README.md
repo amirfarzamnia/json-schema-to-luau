@@ -105,7 +105,7 @@ Luau Output:
 
 ```lua
 export type Root = {
-    user?: { id: number, email?: string },
+    user: { email: string?, id: number }?,
 }
 ```
 
@@ -125,7 +125,8 @@ JSON Schema:
 Luau Output:
 
 ```lua
--- minItems: 1, maxItems: 10
+--- @minItems 1
+--- @maxItems 10
 export type Root = { string }
 ```
 
@@ -172,12 +173,12 @@ Luau Output:
 
 ```lua
 export type Root = {
-    person?: Person,
+    person: Person?,
 }
 
 export type Person = {
-    name?: string,
-    age?: number,
+    age: number?,
+    name: string?,
 }
 ```
 
@@ -197,7 +198,9 @@ JSON Schema:
 Luau Output:
 
 ```lua
--- minimum: 0, maximum: 100, multipleOf: 5
+--- @minimum 0
+--- @maximum 100
+--- @multipleOf 5
 export type Root = number
 ```
 
@@ -214,7 +217,7 @@ JSON Schema:
 Luau Output:
 
 ```lua
--- Union type (any of these types)
+--- Union type (any of these types)
 export type Root = string | number
 ```
 
