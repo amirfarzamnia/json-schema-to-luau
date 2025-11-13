@@ -349,7 +349,7 @@ impl SchemaConverter {
     fn convert_const(&self, value: &serde_json::Value) -> String {
         match value {
             serde_json::Value::String(s) => format!("\"{}\"", s),
-            serde_json::Value::Number(n) => n.to_string(),
+            serde_json::Value::Number(_) => "number".to_string(),
             serde_json::Value::Bool(b) => b.to_string(),
             serde_json::Value::Null => "nil".to_string(),
             _ => "any".to_string(),
