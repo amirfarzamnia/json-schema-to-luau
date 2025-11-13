@@ -310,8 +310,8 @@ impl SchemaConverter {
                                             inline.push_str(", ");
                                         }
                                         inline.push_str(&format!(
-                                            "{}{}: {}",
-                                            prop_name, optional_marker, prop_type
+                                            "{}: {}{}",
+                                            prop_name, prop_type, optional_marker
                                         ));
                                     }
                                 }
