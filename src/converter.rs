@@ -35,6 +35,11 @@ impl SchemaConverter {
         // Generate definitions
         converter.generate_definitions(&mut output)?;
 
+        // Ensure exactly one newline at EOF
+        if !output.ends_with('\n') {
+            output.push('\n');
+        }
+
         Ok(output)
     }
 
