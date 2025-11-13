@@ -40,7 +40,7 @@ export type Root = {
     --- @maxItems 50
     --- @uniqueItems true
     tags: { string }?,
-    timestamps: { [string]: any }?,
+    timestamps: { [string]: string }?,
     --- @format date-time
     updatedAt: string?,
     --- @pattern ^\d+\.\d+\.\d+$
@@ -106,7 +106,7 @@ export type Product = {
     --- @pattern ^[A-Z0-9]{8}-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{12}$
     id: string,
     inStock: boolean?,
-    metadata: { [string]: any }?,
+    metadata: { [string]: string }?,
     --- @minLength 1
     --- @maxLength 100
     name: string,

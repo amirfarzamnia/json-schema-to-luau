@@ -134,38 +134,65 @@ impl SchemaConverter {
         name: &str,
         indent: usize,
     ) -> Result<Option<String>> {
+        // allOf handling
         if let Some(all_of) = &obj.all_of {
-            let mut merged = obj.clone();
+            let parent_has_props = obj.properties.is_some()
+                || obj.additional_properties.is_some()
+                || obj.required.is_some();
 
-            for sub in all_of {
-                if let JsonSchema::Object(sub_obj) = sub {
-                    if let Some(sub_props) = &sub_obj.properties {
-                        merged
-                            .properties
-                            .get_or_insert_with(Default::default)
-                            .extend(sub_props.clone());
-                    }
-                    if let Some(sub_req) = &sub_obj.required {
-                        merged
-                            .required
-                            .get_or_insert_with(Default::default)
-                            .extend(sub_req.clone());
+            // If parent schema has its own properties → MERGE (your documented behavior)
+            if parent_has_props {
+                let mut merged = obj.clone();
+                merged.all_of = None;
+
+                for sub in all_of {
+                    if let JsonSchema::Object(sub_obj) = sub {
+                        // merge properties
+                        if let Some(sub_props) = &sub_obj.properties {
+                            merged
+                                .properties
+                                .get_or_insert_with(Default::default)
+                                .extend(sub_props.clone());
+                        }
+
+                        // merge required
+                        if let Some(sub_req) = &sub_obj.required {
+                            merged
+                                .required
+                                .get_or_insert_with(Default::default)
+                                .extend(sub_req.clone());
+                        }
+
+                        // merge additionalProperties
+                        if let Some(additional) = &sub_obj.additional_properties {
+                            merged.additional_properties = Some(additional.clone());
+                        }
                     }
                 }
+
+                return Ok(Some(self.convert_object(&merged, name, indent)?));
             }
 
-            // Remove allOf to avoid infinite recursion
-            merged.all_of = None;
+            // No parent properties → INTERSECTION
+            let types: Result<Vec<_>> = all_of.iter().map(|s| self.inline_type(s)).collect();
+            let indent_str = "    ".repeat(indent);
+            self.generated_types.insert(name.to_string());
 
-            return Ok(Some(self.convert_object(&merged, name, indent)?));
+            return Ok(Some(format!(
+                "{}export type {} = ({})",
+                indent_str,
+                name,
+                types?.join(" & ")
+            )));
         }
 
-        // Fallback to union/intersection logic for anyOf/oneOf
+        // anyOf / oneOf
         if let Some(any_of) = &obj.any_of {
             return Ok(Some(
                 self.handle_composition(any_of, name, indent, "anyOf")?,
             ));
         }
+
         if let Some(one_of) = &obj.one_of {
             return Ok(Some(
                 self.handle_composition(one_of, name, indent, "oneOf")?,
@@ -500,6 +527,13 @@ impl SchemaConverter {
             }
             inline.push_str(" }");
             Ok(inline)
+        } else if let Some(additional) = &obj.additional_properties {
+            let add_type = match additional {
+                AdditionalProperties::Boolean(true) => "any".to_string(),
+                AdditionalProperties::Boolean(false) => return Ok("{ }".to_string()),
+                AdditionalProperties::Schema(schema) => self.inline_type(schema)?,
+            };
+            Ok(format!("{{ [string]: {} }}", add_type))
         } else {
             Ok("{ [string]: any }".to_string())
         }
