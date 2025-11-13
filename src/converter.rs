@@ -15,6 +15,22 @@ impl SchemaConverter {
         }
     }
 
+    /// Convert a string to PascalCase
+    fn to_pascal_case(s: &str) -> String {
+        s.split(|c: char| !c.is_alphanumeric())
+            .filter(|part| !part.is_empty())
+            .map(|part| {
+                let mut chars = part.chars();
+                match chars.next() {
+                    None => String::new(),
+                    Some(first) => {
+                        first.to_uppercase().collect::<String>() + &chars.as_str().to_lowercase()
+                    }
+                }
+            })
+            .collect()
+    }
+
     pub fn convert(&self, schema: &JsonSchema) -> Result<String> {
         self.convert_with_name(schema, "Root")
     }
@@ -34,8 +50,9 @@ impl SchemaConverter {
 
         let mut output = String::new();
 
-        // Generate main type
-        let main_type = converter.convert_schema(schema, type_name, 0)?;
+        // Generate main type with PascalCase name
+        let pascal_type_name = Self::to_pascal_case(type_name);
+        let main_type = converter.convert_schema(schema, &pascal_type_name, 0)?;
         output.push_str(&main_type);
 
         // Generate definitions
@@ -43,10 +60,11 @@ impl SchemaConverter {
         def_names.sort();
 
         for def_name in def_names {
-            if !converter.generated_types.contains(&def_name) {
+            let pascal_def_name = Self::to_pascal_case(&def_name);
+            if !converter.generated_types.contains(&pascal_def_name) {
                 if let Some(def_schema) = converter.definitions.get(&def_name).cloned() {
                     output.push_str("\n\n");
-                    let def_type = converter.convert_schema(&def_schema, &def_name, 0)?;
+                    let def_type = converter.convert_schema(&def_schema, &pascal_def_name, 0)?;
                     output.push_str(&def_type);
                 }
             }
@@ -454,10 +472,10 @@ impl SchemaConverter {
     fn resolve_ref(&self, ref_path: &str) -> Result<String> {
         // Handle #/definitions/Name or #/$defs/Name
         if let Some(def_name) = ref_path.strip_prefix("#/definitions/") {
-            return Ok(def_name.to_string());
+            return Ok(Self::to_pascal_case(def_name));
         }
         if let Some(def_name) = ref_path.strip_prefix("#/$defs/") {
-            return Ok(def_name.to_string());
+            return Ok(Self::to_pascal_case(def_name));
         }
 
         Err(ConversionError::UnsupportedType(format!(
