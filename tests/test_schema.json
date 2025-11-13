@@ -1,0 +1,418 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://example.com/complex-test-schema.json",
+  "title": "Comprehensive Test Schema",
+  "description": "A complex schema with various data types and structures for testing",
+  "type": "object",
+  "definitions": {
+    "address": {
+      "type": "object",
+      "required": ["street", "city", "country"],
+      "properties": {
+        "street": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "city": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 50
+        },
+        "state": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 2
+        },
+        "postalCode": {
+          "type": "string",
+          "pattern": "^[0-9]{5}(-[0-9]{4})?$"
+        },
+        "country": {
+          "type": "string",
+          "enum": ["US", "CA", "UK", "DE", "FR", "JP"]
+        },
+        "coordinates": {
+          "$ref": "#/definitions/geoCoordinates"
+        }
+      },
+      "additionalProperties": false
+    },
+    "geoCoordinates": {
+      "type": "object",
+      "required": ["latitude", "longitude"],
+      "properties": {
+        "latitude": {
+          "type": "number",
+          "minimum": -90,
+          "maximum": 90
+        },
+        "longitude": {
+          "type": "number",
+          "minimum": -180,
+          "maximum": 180
+        },
+        "elevation": {
+          "type": "number",
+          "description": "Elevation in meters"
+        }
+      }
+    },
+    "person": {
+      "type": "object",
+      "required": ["firstName", "lastName", "age"],
+      "properties": {
+        "firstName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 50
+        },
+        "lastName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 50
+        },
+        "middleName": {
+          "type": "string",
+          "maxLength": 50
+        },
+        "age": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 150
+        },
+        "email": {
+          "type": "string",
+          "format": "email"
+        },
+        "phone": {
+          "type": "string",
+          "pattern": "^\\+?[1-9]\\d{1,14}$"
+        },
+        "isActive": {
+          "type": "boolean",
+          "default": true
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 20
+          },
+          "minItems": 0,
+          "maxItems": 10,
+          "uniqueItems": true
+        }
+      }
+    },
+    "product": {
+      "type": "object",
+      "required": ["id", "name", "price"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[A-Z0-9]{8}-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{12}$"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 1000
+        },
+        "price": {
+          "type": "number",
+          "minimum": 0,
+          "exclusiveMinimum": 0
+        },
+        "currency": {
+          "type": "string",
+          "enum": ["USD", "EUR", "GBP", "JPY", "CAD"],
+          "default": "USD"
+        },
+        "inStock": {
+          "type": "boolean"
+        },
+        "categories": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["electronics", "clothing", "books", "home", "sports"]
+          },
+          "minItems": 1
+        },
+        "metadata": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  },
+  "required": [
+    "id",
+    "name",
+    "version",
+    "createdAt",
+    "active",
+    "primaryUser",
+    "products"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Unique identifier for the entity"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 100,
+      "pattern": "^[a-zA-Z0-9 _-]+$"
+    },
+    "description": {
+      "type": "string",
+      "maxLength": 500
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "examples": ["1.0.0", "2.1.3"]
+    },
+    "createdAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "updatedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "active": {
+      "type": "boolean",
+      "default": false
+    },
+    "priority": {
+      "type": "integer",
+      "enum": [1, 2, 3, 4, 5],
+      "default": 3
+    },
+    "score": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 100,
+      "multipleOf": 0.5
+    },
+    "primaryUser": {
+      "$ref": "#/definitions/person"
+    },
+    "secondaryUsers": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/person"
+      },
+      "minItems": 0,
+      "maxItems": 10
+    },
+    "billingAddress": {
+      "$ref": "#/definitions/address"
+    },
+    "shippingAddress": {
+      "$ref": "#/definitions/address"
+    },
+    "products": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/product"
+      },
+      "minItems": 1,
+      "maxItems": 100
+    },
+    "settings": {
+      "type": "object",
+      "properties": {
+        "notifications": {
+          "type": "object",
+          "properties": {
+            "email": {
+              "type": "boolean",
+              "default": true
+            },
+            "sms": {
+              "type": "boolean",
+              "default": false
+            },
+            "push": {
+              "type": "boolean",
+              "default": true
+            }
+          }
+        },
+        "privacy": {
+          "type": "object",
+          "properties": {
+            "level": {
+              "type": "string",
+              "enum": ["public", "private", "hidden"],
+              "default": "private"
+            },
+            "shareAnalytics": {
+              "type": "boolean",
+              "default": false
+            }
+          }
+        }
+      }
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 20
+      },
+      "uniqueItems": true,
+      "maxItems": 50
+    },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": true,
+      "description": "Flexible key-value store for additional data"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["pending", "active", "suspended", "terminated"],
+      "default": "pending"
+    },
+    "flags": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": ["featured", "verified", "premium", "legacy"]
+      },
+      "uniqueItems": true
+    },
+    "dimensions": {
+      "type": "object",
+      "properties": {
+        "width": {
+          "type": "number",
+          "minimum": 0
+        },
+        "height": {
+          "type": "number",
+          "minimum": 0
+        },
+        "depth": {
+          "type": "number",
+          "minimum": 0
+        },
+        "unit": {
+          "type": "string",
+          "enum": ["cm", "m", "in", "ft"],
+          "default": "cm"
+        }
+      }
+    },
+    "timestamps": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string",
+        "format": "date-time"
+      }
+    },
+    "complexArray": {
+      "type": "array",
+      "items": {
+        "oneOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "number"
+          },
+          {
+            "type": "boolean"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string"
+              },
+              "value": {}
+            }
+          }
+        ]
+      }
+    },
+    "conditionalField": {
+      "if": {
+        "properties": {
+          "active": { "const": true }
+        }
+      },
+      "then": {
+        "properties": {
+          "activationDate": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": ["activationDate"]
+      },
+      "else": {
+        "properties": {
+          "deactivationReason": {
+            "type": "string",
+            "maxLength": 200
+          }
+        }
+      }
+    },
+    "anyOfExample": {
+      "anyOf": [
+        {
+          "type": "string",
+          "pattern": "^[A-Z]+$"
+        },
+        {
+          "type": "integer",
+          "minimum": 0
+        },
+        {
+          "type": "boolean"
+        }
+      ]
+    },
+    "allOfExample": {
+      "allOf": [
+        {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string"
+            }
+          },
+          "required": ["name"]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "code": {
+              "type": "string"
+            }
+          },
+          "required": ["code"]
+        }
+      ]
+    }
+  },
+  "additionalProperties": false,
+  "dependencies": {
+    "billingAddress": ["primaryUser"],
+    "secondaryUsers": ["primaryUser"]
+  }
+}
