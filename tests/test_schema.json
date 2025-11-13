@@ -56,7 +56,8 @@
           "type": "number",
           "description": "Elevation in meters"
         }
-      }
+      },
+      "additionalProperties": false
     },
     "person": {
       "type": "object",
@@ -103,7 +104,8 @@
           "maxItems": 10,
           "uniqueItems": true
         }
-      }
+      },
+      "additionalProperties": false
     },
     "product": {
       "type": "object",
@@ -124,7 +126,6 @@
         },
         "price": {
           "type": "number",
-          "minimum": 0,
           "exclusiveMinimum": 0
         },
         "currency": {
@@ -149,7 +150,81 @@
             "type": "string"
           }
         }
-      }
+      },
+      "additionalProperties": false
+    },
+    "timestamps": {
+      "type": "object",
+      "properties": {
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "additionalProperties": false
+    },
+    "extraPayload": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": ["analytics", "metrics", "events", "logs"]
+        },
+        "value": {
+          "type": "number",
+          "multipleOf": 0.5
+        },
+        "data": {}
+      },
+      "required": ["kind"],
+      "additionalProperties": false
+    },
+    "dimensions": {
+      "type": "object",
+      "properties": {
+        "width": {
+          "type": "number",
+          "minimum": 0
+        },
+        "height": {
+          "type": "number",
+          "minimum": 0
+        },
+        "depth": {
+          "type": "number",
+          "minimum": 0
+        },
+        "unit": {
+          "type": "string",
+          "enum": ["cm", "m", "in", "ft"],
+          "default": "cm"
+        }
+      },
+      "additionalProperties": false
+    },
+    "enhancedDimensions": {
+      "allOf": [
+        { "$ref": "#/definitions/dimensions" },
+        {
+          "type": "object",
+          "properties": {
+            "weight": {
+              "type": "number",
+              "minimum": 0
+            },
+            "weightUnit": {
+              "type": "string",
+              "enum": ["kg", "lb", "g"],
+              "default": "kg"
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
     }
   },
   "required": [
@@ -193,6 +268,22 @@
     "active": {
       "type": "boolean",
       "default": false
+    },
+    "activationDate": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Required when active is true"
+    },
+    "deactivationReason": {
+      "type": "string",
+      "maxLength": 200,
+      "description": "Required when active is false"
+    },
+    "suspensionReason": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200,
+      "description": "Required when status is suspended"
     },
     "priority": {
       "type": "integer",
@@ -248,7 +339,8 @@
               "type": "boolean",
               "default": true
             }
-          }
+          },
+          "additionalProperties": false
         },
         "privacy": {
           "type": "object",
@@ -262,9 +354,11 @@
               "type": "boolean",
               "default": false
             }
-          }
+          },
+          "additionalProperties": false
         }
-      }
+      },
+      "additionalProperties": false
     },
     "tags": {
       "type": "array",
@@ -295,26 +389,10 @@
       "uniqueItems": true
     },
     "dimensions": {
-      "type": "object",
-      "properties": {
-        "width": {
-          "type": "number",
-          "minimum": 0
-        },
-        "height": {
-          "type": "number",
-          "minimum": 0
-        },
-        "depth": {
-          "type": "number",
-          "minimum": 0
-        },
-        "unit": {
-          "type": "string",
-          "enum": ["cm", "m", "in", "ft"],
-          "default": "cm"
-        }
-      }
+      "$ref": "#/definitions/dimensions"
+    },
+    "enhancedDimensions": {
+      "$ref": "#/definitions/enhancedDimensions"
     },
     "timestamps": {
       "type": "object",
@@ -346,30 +424,6 @@
             }
           }
         ]
-      }
-    },
-    "conditionalField": {
-      "if": {
-        "properties": {
-          "active": { "const": true }
-        }
-      },
-      "then": {
-        "properties": {
-          "activationDate": {
-            "type": "string",
-            "format": "date-time"
-          }
-        },
-        "required": ["activationDate"]
-      },
-      "else": {
-        "properties": {
-          "deactivationReason": {
-            "type": "string",
-            "maxLength": 200
-          }
-        }
       }
     },
     "anyOfExample": {
@@ -408,11 +462,136 @@
           "required": ["code"]
         }
       ]
+    },
+    "numericId": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 999,
+      "description": "Alternative numeric identifier"
+    },
+    "compactStatus": {
+      "enum": ["active", "paused", "deleted"],
+      "description": "Simplified status enum"
+    },
+    "compactScore": {
+      "enum": [1, 2, 3],
+      "description": "Simplified score enum"
+    },
+    "enhancedMeta": {
+      "type": "object",
+      "allOf": [
+        {
+          "type": "object",
+          "properties": {
+            "version": {
+              "type": "string",
+              "pattern": "^v[0-9]+$",
+              "examples": ["v1", "v2", "v10"]
+            }
+          },
+          "required": ["version"]
+        },
+        { "$ref": "#/definitions/timestamps" }
+      ],
+      "properties": {
+        "author": {
+          "type": "string",
+          "minLength": 1
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 200
+        }
+      },
+      "required": ["author", "version"],
+      "additionalProperties": false
+    },
+    "compactTags": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 20
+      },
+      "minItems": 1,
+      "maxItems": 5,
+      "uniqueItems": true
+    },
+    "flexiblePayload": {
+      "anyOf": [
+        {
+          "type": "string",
+          "maxLength": 500
+        },
+        {
+          "type": "number",
+          "minimum": 0
+        },
+        {
+          "$ref": "#/definitions/extraPayload"
+        }
+      ]
+    },
+    "exclusiveChoice": {
+      "oneOf": [
+        {
+          "const": "a",
+          "description": "Option A"
+        },
+        {
+          "const": "b",
+          "description": "Option B"
+        },
+        {
+          "const": "c",
+          "description": "Option C"
+        }
+      ]
+    },
+    "numericConfig": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "number",
+        "minimum": 0
+      },
+      "maxProperties": 10
+    },
+    "nullableField": {
+      "type": ["string", "null"],
+      "description": "String field that can be explicitly set to null"
     }
   },
   "additionalProperties": false,
-  "dependencies": {
+  "dependentRequired": {
     "billingAddress": ["primaryUser"],
-    "secondaryUsers": ["primaryUser"]
-  }
+    "secondaryUsers": ["primaryUser"],
+    "numericId": ["id"]
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "active": { "const": true }
+        },
+        "required": ["active"]
+      },
+      "then": {
+        "required": ["activationDate"]
+      },
+      "else": {
+        "required": ["deactivationReason"]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "status": { "const": "suspended" }
+        },
+        "required": ["status"]
+      },
+      "then": {
+        "required": ["suspensionReason"]
+      }
+    }
+  ]
 }

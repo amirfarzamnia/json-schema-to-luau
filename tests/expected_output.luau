@@ -1,18 +1,35 @@
 --- A complex schema with various data types and structures for testing
 export type Root = {
+    --- Required when active is true
+    --- @format date-time
+    activationDate: string?,
     active: boolean,
     allOfExample: ({ name: string } & { code: string })?,
     anyOfExample: (string | number | boolean)?,
     billingAddress: Address?,
+    --- Simplified score enum
+    compactScore: number?,
+    --- Simplified status enum
+    compactStatus: "active" | "paused" | "deleted"?,
+    --- @minItems 1
+    --- @maxItems 5
+    --- @uniqueItems true
+    compactTags: { string }?,
     complexArray: { (string | number | boolean | { type: string?, value: any? }) }?,
-    conditionalField: any?,
     --- @format date-time
     createdAt: string,
+    --- Required when active is false
+    --- @maxLength 200
+    deactivationReason: string?,
     --- @maxLength 500
     description: string?,
-    dimensions: { depth: number?, height: number?, unit: "cm" | "m" | "in" | "ft"?, width: number? }?,
+    dimensions: Dimensions?,
+    enhancedDimensions: EnhancedDimensions?,
+    enhancedMeta: ({ author: string, description: string?, version: string } & Timestamps)?,
+    exclusiveChoice: ("a" | "b" | "c")?,
     --- @uniqueItems true
     flags: { "featured" | "verified" | "premium" | "legacy" }?,
+    flexiblePayload: (string | number | ExtraPayload)?,
     --- Unique identifier for the entity
     --- @format uuid
     id: string,
@@ -22,6 +39,14 @@ export type Root = {
     --- @maxLength 100
     --- @pattern ^[a-zA-Z0-9 _-]+$
     name: string,
+    --- String field that can be explicitly set to null
+    nullableField: (string | nil)?,
+    --- @maxProperties 10
+    numericConfig: { [string]: number }?,
+    --- Alternative numeric identifier
+    --- @minimum 1
+    --- @maximum 999
+    numericId: number?,
     primaryUser: Person,
     priority: number?,
     --- @minItems 1
@@ -37,6 +62,10 @@ export type Root = {
     settings: { notifications: { email: boolean?, push: boolean?, sms: boolean? }?, privacy: { level: "public" | "private" | "hidden"?, shareAnalytics: boolean? }? }?,
     shippingAddress: Address?,
     status: "pending" | "active" | "suspended" | "terminated"?,
+    --- Required when status is suspended
+    --- @minLength 1
+    --- @maxLength 200
+    suspensionReason: string?,
     --- @maxItems 50
     --- @uniqueItems true
     tags: { string }?,
@@ -61,6 +90,25 @@ export type Address = {
     --- @minLength 1
     --- @maxLength 100
     street: string,
+}
+
+export type Dimensions = {
+    --- @minimum 0
+    depth: number?,
+    --- @minimum 0
+    height: number?,
+    unit: "cm" | "m" | "in" | "ft"?,
+    --- @minimum 0
+    width: number?,
+}
+
+export type EnhancedDimensions = (Dimensions & { weight: number?, weightUnit: "kg" | "lb" | "g"? })
+
+export type ExtraPayload = {
+    data: any?,
+    kind: "analytics" | "metrics" | "events" | "logs",
+    --- @multipleOf 0.5
+    value: number?,
 }
 
 export type GeoCoordinates = {
@@ -110,7 +158,13 @@ export type Product = {
     --- @minLength 1
     --- @maxLength 100
     name: string,
-    --- @minimum 0
     --- @exclusiveMinimum 0
     price: number,
+}
+
+export type Timestamps = {
+    --- @format date-time
+    createdAt: string?,
+    --- @format date-time
+    updatedAt: string?,
 }
