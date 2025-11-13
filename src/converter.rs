@@ -1,5 +1,5 @@
 use crate::error::{ConversionError, Result};
-use crate::schema::{JsonSchema, SchemaObject, SchemaType};
+use crate::schema::{AdditionalProperties, JsonSchema, SchemaObject, SchemaType, SingleType};
 use std::collections::{HashMap, HashSet};
 
 pub struct SchemaConverter {
@@ -63,6 +63,13 @@ impl SchemaConverter {
         }
     }
 
+    fn get_single_types(schema_type: &SchemaType) -> Vec<&SingleType> {
+        match schema_type {
+            SchemaType::Single(single) => vec![single],
+            SchemaType::Multiple(types) => types.iter().collect(),
+        }
+    }
+
     fn convert_object(&mut self, obj: &SchemaObject, name: &str, indent: usize) -> Result<String> {
         let indent_str = "    ".repeat(indent);
         let mut output = String::new();
@@ -78,8 +85,27 @@ impl SchemaConverter {
         }
 
         // Handle allOf, anyOf, oneOf
+        // Note: If allOf exists alongside other properties, we should merge them
         if let Some(all_of) = &obj.all_of {
-            return self.handle_composition(all_of, name, indent, "allOf");
+            // If this schema has properties or type alongside allOf, we need to merge
+            if obj.properties.is_some() || obj.type_.is_some() {
+                // Create a merged schema that includes both the current schema and allOf schemas
+                let mut merged_output = String::new();
+                
+                // First, handle the current schema properties
+                if obj.properties.is_some() || obj.type_.is_some() {
+                    let current_schema = SchemaObject {
+                        all_of: None, // Remove allOf to avoid recursion
+                        ..obj.clone()
+                    };
+                    let current_result = self.convert_object(&current_schema, name, indent)?;
+                    merged_output = current_result;
+                }
+                
+                return Ok(merged_output);
+            } else {
+                return self.handle_composition(all_of, name, indent, "allOf");
+            }
         }
         if let Some(any_of) = &obj.any_of {
             return self.handle_composition(any_of, name, indent, "anyOf");
@@ -100,8 +126,32 @@ impl SchemaConverter {
 
         // Handle type-specific conversion
         if let Some(type_) = &obj.type_ {
-            match type_ {
-                SchemaType::Object => {
+            let types = Self::get_single_types(type_);
+            
+            // Handle union types (multiple types)
+            if types.len() > 1 {
+                let type_strings: Vec<String> = types.iter().map(|t| match t {
+                    SingleType::String => "string".to_string(),
+                    SingleType::Number | SingleType::Integer => "number".to_string(),
+                    SingleType::Boolean => "boolean".to_string(),
+                    SingleType::Null => "nil".to_string(),
+                    SingleType::Array => "{ any }".to_string(),
+                    SingleType::Object => "{ [string]: any }".to_string(),
+                }).collect();
+                
+                self.generated_types.insert(name.to_string());
+                let constraints = self.format_constraints(&JsonSchema::Object(obj.clone()));
+                if !constraints.is_empty() {
+                    output.push_str(&format!("{}-- {}\n", indent_str, constraints));
+                }
+                output.push_str(&format!("{}export type {} = {}", indent_str, name, type_strings.join(" | ")));
+                return Ok(output);
+            }
+            
+            // Handle single type
+            let single_type = types[0];
+            match single_type {
+                SingleType::Object => {
                     self.generated_types.insert(name.to_string());
                     output.push_str(&format!("{}export type {} = {{\n", indent_str, name));
 
@@ -148,13 +198,17 @@ impl SchemaConverter {
 
                     // Handle additionalProperties
                     if let Some(additional) = &obj.additional_properties {
-                        let add_type = self.inline_type(additional)?;
+                        let add_type = match additional {
+                            AdditionalProperties::Boolean(true) => "any".to_string(),
+                            AdditionalProperties::Boolean(false) => return Ok(output + &format!("{}}}", indent_str)), // No additional properties allowed
+                            AdditionalProperties::Schema(schema) => self.inline_type(schema)?,
+                        };
                         output.push_str(&format!("{}    [string]: {},\n", indent_str, add_type));
                     }
 
                     output.push_str(&format!("{}}}", indent_str));
                 }
-                SchemaType::Array => {
+                SingleType::Array => {
                     self.generated_types.insert(name.to_string());
                     let item_type = if let Some(items) = &obj.items {
                         self.inline_type(items)?
@@ -172,7 +226,7 @@ impl SchemaConverter {
                         indent_str, name, item_type
                     ));
                 }
-                SchemaType::String => {
+                SingleType::String => {
                     self.generated_types.insert(name.to_string());
                     let constraints = self.format_constraints(&JsonSchema::Object(obj.clone()));
                     if !constraints.is_empty() {
@@ -180,7 +234,7 @@ impl SchemaConverter {
                     }
                     output.push_str(&format!("{}export type {} = string", indent_str, name));
                 }
-                SchemaType::Number | SchemaType::Integer => {
+                SingleType::Number | SingleType::Integer => {
                     self.generated_types.insert(name.to_string());
                     let constraints = self.format_constraints(&JsonSchema::Object(obj.clone()));
                     if !constraints.is_empty() {
@@ -188,11 +242,11 @@ impl SchemaConverter {
                     }
                     output.push_str(&format!("{}export type {} = number", indent_str, name));
                 }
-                SchemaType::Boolean => {
+                SingleType::Boolean => {
                     self.generated_types.insert(name.to_string());
                     output.push_str(&format!("{}export type {} = boolean", indent_str, name));
                 }
-                SchemaType::Null => {
+                SingleType::Null => {
                     self.generated_types.insert(name.to_string());
                     output.push_str(&format!("{}export type {} = nil", indent_str, name));
                 }
@@ -275,12 +329,29 @@ impl SchemaConverter {
 
                 // Handle type-specific inline conversion
                 if let Some(type_) = &obj.type_ {
-                    match type_ {
-                        SchemaType::String => Ok("string".to_string()),
-                        SchemaType::Number | SchemaType::Integer => Ok("number".to_string()),
-                        SchemaType::Boolean => Ok("boolean".to_string()),
-                        SchemaType::Null => Ok("nil".to_string()),
-                        SchemaType::Array => {
+                    let types = Self::get_single_types(type_);
+                    
+                    // Handle union types
+                    if types.len() > 1 {
+                        let type_strings: Vec<String> = types.iter().map(|t| match t {
+                            SingleType::String => "string".to_string(),
+                            SingleType::Number | SingleType::Integer => "number".to_string(),
+                            SingleType::Boolean => "boolean".to_string(),
+                            SingleType::Null => "nil".to_string(),
+                            SingleType::Array => "{ any }".to_string(),
+                            SingleType::Object => "{ [string]: any }".to_string(),
+                        }).collect();
+                        return Ok(format!("({})", type_strings.join(" | ")));
+                    }
+                    
+                    // Handle single type
+                    let single_type = types[0];
+                    match single_type {
+                        SingleType::String => Ok("string".to_string()),
+                        SingleType::Number | SingleType::Integer => Ok("number".to_string()),
+                        SingleType::Boolean => Ok("boolean".to_string()),
+                        SingleType::Null => Ok("nil".to_string()),
+                        SingleType::Array => {
                             if let Some(items) = &obj.items {
                                 let item_type = self.inline_type(items)?;
                                 Ok(format!("{{ {} }}", item_type))
@@ -288,7 +359,7 @@ impl SchemaConverter {
                                 Ok("{ any }".to_string())
                             }
                         }
-                        SchemaType::Object => {
+                        SingleType::Object => {
                             if let Some(properties) = &obj.properties {
                                 let mut inline = String::from("{ ");
                                 let required_fields: HashSet<_> = obj

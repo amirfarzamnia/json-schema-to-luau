@@ -1,16 +1,25 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(untagged)]
 pub enum JsonSchema {
     Boolean(bool),
     Object(SchemaObject),
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct SchemaObject {
+    // JSON Schema metadata
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "$schema")]
+    pub schema: Option<String>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "$id")]
+    pub id: Option<String>,
+
     #[serde(skip_serializing_if = "Option::is_none")]
     pub title: Option<String>,
 
@@ -104,18 +113,55 @@ pub struct SchemaObject {
     pub max_properties: Option<usize>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub additional_properties: Option<Box<JsonSchema>>,
+    pub additional_properties: Option<AdditionalProperties>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
     pub pattern_properties: Option<HashMap<String, JsonSchema>>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
     pub format: Option<String>,
+
+    // Additional JSON Schema Draft-07 fields
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub default: Option<serde_json::Value>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub examples: Option<Vec<serde_json::Value>>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub contains: Option<Box<JsonSchema>>,
+
+    // Conditional schemas
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "if")]
+    pub if_: Option<Box<JsonSchema>>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "then")]
+    pub then_: Option<Box<JsonSchema>>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "else")]
+    pub else_: Option<Box<JsonSchema>>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(untagged)]
+pub enum AdditionalProperties {
+    Boolean(bool),
+    Schema(Box<JsonSchema>),
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(untagged)]
+pub enum SchemaType {
+    Single(SingleType),
+    Multiple(Vec<SingleType>),
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "lowercase")]
-pub enum SchemaType {
+pub enum SingleType {
     Null,
     Boolean,
     Object,
