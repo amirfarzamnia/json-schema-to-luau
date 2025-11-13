@@ -147,8 +147,34 @@ impl SchemaConverter {
 
                 for sub in all_of {
                     if let JsonSchema::Object(sub_obj) = sub {
+                        // Handle $ref by resolving it first
+                        let resolved_obj = if let Some(ref_path) = &sub_obj.ref_ {
+                            // Resolve the reference to get the actual schema
+                            if let Some(def_name) = ref_path.strip_prefix("#/$defs/") {
+                                if let Some(JsonSchema::Object(ref_obj)) =
+                                    self.definitions.get(def_name)
+                                {
+                                    ref_obj
+                                } else {
+                                    sub_obj
+                                }
+                            } else if let Some(def_name) = ref_path.strip_prefix("#/definitions/") {
+                                if let Some(JsonSchema::Object(ref_obj)) =
+                                    self.definitions.get(def_name)
+                                {
+                                    ref_obj
+                                } else {
+                                    sub_obj
+                                }
+                            } else {
+                                sub_obj
+                            }
+                        } else {
+                            sub_obj
+                        };
+
                         // merge properties
-                        if let Some(sub_props) = &sub_obj.properties {
+                        if let Some(sub_props) = &resolved_obj.properties {
                             merged
                                 .properties
                                 .get_or_insert_with(Default::default)
@@ -156,7 +182,7 @@ impl SchemaConverter {
                         }
 
                         // merge required
-                        if let Some(sub_req) = &sub_obj.required {
+                        if let Some(sub_req) = &resolved_obj.required {
                             merged
                                 .required
                                 .get_or_insert_with(Default::default)
@@ -164,7 +190,7 @@ impl SchemaConverter {
                         }
 
                         // merge additionalProperties
-                        if let Some(additional) = &sub_obj.additional_properties {
+                        if let Some(additional) = &resolved_obj.additional_properties {
                             merged.additional_properties = Some(additional.clone());
                         }
                     }
@@ -461,6 +487,52 @@ impl SchemaConverter {
             return Ok(Some(format!("({})", types?.join(" | "))));
         }
         if let Some(all_of) = &obj.all_of {
+            let parent_has_props = obj.properties.is_some()
+                || obj.additional_properties.is_some()
+                || obj.required.is_some();
+
+            // If parent schema has its own properties → MERGE with intersection format
+            if parent_has_props {
+                let mut merged_props = obj.properties.clone().unwrap_or_default();
+                let mut merged_required = obj.required.clone().unwrap_or_default();
+                let mut ref_types = Vec::new();
+
+                for sub in all_of {
+                    if let JsonSchema::Object(sub_obj) = sub {
+                        if let Some(ref_path) = &sub_obj.ref_ {
+                            // Keep $ref as intersection type
+                            ref_types.push(self.resolve_ref(ref_path)?);
+                        } else {
+                            // Merge non-ref properties
+                            if let Some(sub_props) = &sub_obj.properties {
+                                merged_props.extend(sub_props.clone());
+                            }
+                            if let Some(sub_req) = &sub_obj.required {
+                                merged_required.extend(sub_req.clone());
+                            }
+                        }
+                    }
+                }
+
+                // Create the merged object part
+                let mut merged_obj = obj.clone();
+                merged_obj.properties = Some(merged_props);
+                merged_obj.required = Some(merged_required);
+                merged_obj.all_of = None;
+
+                let merged_part = self.inline_object_properties(&merged_obj)?;
+
+                if ref_types.is_empty() {
+                    return Ok(Some(merged_part));
+                } else {
+                    // Create intersection: (merged_object & ref_types...)
+                    let mut parts = vec![merged_part];
+                    parts.extend(ref_types);
+                    return Ok(Some(format!("({})", parts.join(" & "))));
+                }
+            }
+
+            // No parent properties → INTERSECTION
             let types: Result<Vec<_>> = all_of.iter().map(|s| self.inline_type(s)).collect();
             return Ok(Some(format!("({})", types?.join(" & "))));
         }
