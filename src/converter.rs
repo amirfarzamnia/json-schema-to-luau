@@ -445,18 +445,42 @@ impl SchemaConverter {
     }
 
     fn convert_enum(&self, values: &[serde_json::Value]) -> String {
-        let literals: Vec<String> = values
-            .iter()
-            .map(|v| match v {
-                serde_json::Value::String(s) => format!("\"{}\"", s),
-                serde_json::Value::Number(n) => n.to_string(),
-                serde_json::Value::Bool(b) => b.to_string(),
-                serde_json::Value::Null => "nil".to_string(),
-                _ => "any".to_string(),
-            })
-            .collect();
+        let mut all_strings = true;
+        let mut all_numbers = true;
 
-        literals.join(" | ")
+        for v in values {
+            match v {
+                serde_json::Value::String(_) => all_numbers = false,
+                serde_json::Value::Number(_) => all_strings = false,
+                serde_json::Value::Bool(_) | serde_json::Value::Null => {
+                    all_strings = false;
+                    all_numbers = false;
+                }
+                _ => {
+                    return "any".to_string();
+                }
+            }
+        }
+
+        // Luau does NOT support numeric literal types → collapse to "number"
+        if all_numbers {
+            return "number".to_string();
+        }
+
+        // Strings are safe → emit literal strings
+        if all_strings {
+            let parts: Vec<_> = values
+                .iter()
+                .map(|v| match v {
+                    serde_json::Value::String(s) => format!("\"{}\"", s),
+                    _ => unreachable!(),
+                })
+                .collect();
+            return parts.join(" | ");
+        }
+
+        // Mixed primitive enum → collapse to any valid Luau scalar
+        "string | number | boolean | nil".to_string()
     }
 
     fn convert_const(&self, value: &serde_json::Value) -> String {
