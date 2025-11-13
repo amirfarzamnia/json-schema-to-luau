@@ -9,10 +9,4 @@ pub enum ConversionError {
 
     #[error("Unsupported schema type: {0}")]
     UnsupportedType(String),
-
-    #[error("Invalid schema: {0}")]
-    InvalidSchema(String),
-
-    #[error("IO error: {0}")]
-    IoError(#[from] std::io::Error),
 }
