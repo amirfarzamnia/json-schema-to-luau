@@ -54,7 +54,7 @@ fn test_number_constraints() {
 
 #[test]
 fn test_ref_definition() {
-    let schema = r#"{
+    let schema = r##"{
         "type": "object",
         "properties": {
             "user": { "$ref": "#/definitions/User" }
@@ -68,7 +68,7 @@ fn test_ref_definition() {
                 }
             }
         }
-    }"#;
+    }"##;
 
     let result = convert_schema(schema).unwrap();
     assert!(result.contains("user?: User"));

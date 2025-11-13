@@ -44,9 +44,9 @@ impl SchemaConverter {
 
         for def_name in def_names {
             if !converter.generated_types.contains(&def_name) {
-                if let Some(def_schema) = converter.definitions.get(&def_name) {
+                if let Some(def_schema) = converter.definitions.get(&def_name).cloned() {
                     output.push_str("\n\n");
-                    let def_type = converter.convert_schema(def_schema, &def_name, 0)?;
+                    let def_type = converter.convert_schema(&def_schema, &def_name, 0)?;
                     output.push_str(&def_type);
                 }
             }

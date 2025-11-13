@@ -1,4 +1,3 @@
-
 use json_schema_to_luau::convert_schema;
 
 fn main() {
@@ -43,7 +42,7 @@ fn main() {
     println!("{}\n", convert_schema(schema3).unwrap());
 
     // Example 4: References
-    let schema4 = r#"{
+    let schema4 = r##"{
         "type": "object",
         "properties": {
             "user": { "$ref": "#/definitions/User" },
@@ -70,7 +69,7 @@ fn main() {
                 }
             }
         }
-    }"#;
+    }"##;
 
     println!("=== Example 4: References ===");
     println!("{}\n", convert_schema(schema4).unwrap());
