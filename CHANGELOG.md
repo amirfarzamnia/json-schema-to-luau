@@ -7,6 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0] - 2025-11-13
+
+### Added
+
+- Stable 1.0 release
+- Enhanced type inference for complex nested schemas
+- Improved handling of `$ref` resolution and circular references
+- Extended CLI options (input/output path, stdout, formatting control)
+- Better Luau code formatting and comment alignment
+- Support for custom type name prefixes and namespace output
+- Performance optimizations for large schemas
+- Improved error messages and validation feedback
+- Updated documentation and examples for 1.0 features
+
+### Changed
+
+- Refactored core converter for maintainability and extensibility
+- Unified internal schema traversal logic
+- Improved enum and const handling for mixed-type values
+- CLI now exits with non-zero code on validation or conversion errors
+
+### Fixed
+
+- Corrected handling of nested `allOf` and `oneOf` compositions
+- Fixed missing comments for constraints in nested definitions
+- Resolved edge cases with empty `properties` or `items` arrays
+
 ## [0.1.0] - 2025-11-13
 
 ### Added
@@ -35,5 +62,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Comprehensive test suite
 - Full documentation and examples
 
-[Unreleased]: https://github.com/amirfarzamnia/json-schema-to-luau/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/amirfarzamnia/json-schema-to-luau/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/amirfarzamnia/json-schema-to-luau/compare/v0.1.0...v1.0.0
 [0.1.0]: https://github.com/amirfarzamnia/json-schema-to-luau/releases/tag/v0.1.0
