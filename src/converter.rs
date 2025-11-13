@@ -134,25 +134,45 @@ impl SchemaConverter {
         name: &str,
         indent: usize,
     ) -> Result<Option<String>> {
-        let composition = if let Some(all_of) = &obj.all_of {
-            if obj.properties.is_some() || obj.type_.is_some() {
-                // Merge current schema with allOf - for now just handle current schema
-                return Ok(None);
-            }
-            Some(("allOf", all_of))
-        } else if let Some(any_of) = &obj.any_of {
-            Some(("anyOf", any_of))
-        } else if let Some(one_of) = &obj.one_of {
-            Some(("oneOf", one_of))
-        } else {
-            None
-        };
+        if let Some(all_of) = &obj.all_of {
+            let mut merged = obj.clone();
 
-        if let Some((kind, schemas)) = composition {
-            Ok(Some(self.handle_composition(schemas, name, indent, kind)?))
-        } else {
-            Ok(None)
+            for sub in all_of {
+                if let JsonSchema::Object(sub_obj) = sub {
+                    if let Some(sub_props) = &sub_obj.properties {
+                        merged
+                            .properties
+                            .get_or_insert_with(Default::default)
+                            .extend(sub_props.clone());
+                    }
+                    if let Some(sub_req) = &sub_obj.required {
+                        merged
+                            .required
+                            .get_or_insert_with(Default::default)
+                            .extend(sub_req.clone());
+                    }
+                }
+            }
+
+            // Remove allOf to avoid infinite recursion
+            merged.all_of = None;
+
+            return Ok(Some(self.convert_object(&merged, name, indent)?));
         }
+
+        // Fallback to union/intersection logic for anyOf/oneOf
+        if let Some(any_of) = &obj.any_of {
+            return Ok(Some(
+                self.handle_composition(any_of, name, indent, "anyOf")?,
+            ));
+        }
+        if let Some(one_of) = &obj.one_of {
+            return Ok(Some(
+                self.handle_composition(one_of, name, indent, "oneOf")?,
+            ));
+        }
+
+        Ok(None)
     }
 
     fn handle_type_conversion(
