@@ -76,7 +76,7 @@ impl SchemaConverter {
 
         // Add description as comment
         if let Some(desc) = &obj.description {
-            output.push_str(&format!("{}-- {}\n", indent_str, desc));
+            output.push_str(&format!("{}--- {}\n", indent_str, desc));
         }
 
         // Handle $ref
@@ -145,7 +145,7 @@ impl SchemaConverter {
                 self.generated_types.insert(name.to_string());
                 let constraints = self.format_constraints(&JsonSchema::Object(obj.clone()));
                 if !constraints.is_empty() {
-                    output.push_str(&format!("{}-- {}\n", indent_str, constraints));
+                    output.push_str(&constraints);
                 }
                 output.push_str(&format!(
                     "{}export type {} = {}",
@@ -182,7 +182,7 @@ impl SchemaConverter {
                                 if let JsonSchema::Object(prop_obj) = prop_schema {
                                     if let Some(desc) = &prop_obj.description {
                                         output
-                                            .push_str(&format!("{}    -- {}\n", indent_str, desc));
+                                            .push_str(&format!("{}    --- {}\n", indent_str, desc));
                                     }
                                 }
 
@@ -190,10 +190,12 @@ impl SchemaConverter {
                                 let constraints = self.format_constraints(prop_schema);
 
                                 if !constraints.is_empty() {
-                                    output.push_str(&format!(
-                                        "{}    -- {}\n",
-                                        indent_str, constraints
-                                    ));
+                                    let formatted_constraints = self
+                                        .format_constraints_with_indent(
+                                            prop_schema,
+                                            &format!("{}    ", indent_str),
+                                        );
+                                    output.push_str(&formatted_constraints);
                                 }
 
                                 output.push_str(&format!(
@@ -226,9 +228,12 @@ impl SchemaConverter {
                         "any".to_string()
                     };
 
-                    let constraints = self.format_constraints(&JsonSchema::Object(obj.clone()));
+                    let constraints = self.format_constraints_with_indent(
+                        &JsonSchema::Object(obj.clone()),
+                        &indent_str,
+                    );
                     if !constraints.is_empty() {
-                        output.push_str(&format!("{}-- {}\n", indent_str, constraints));
+                        output.push_str(&constraints);
                     }
 
                     output.push_str(&format!(
@@ -238,17 +243,23 @@ impl SchemaConverter {
                 }
                 SingleType::String => {
                     self.generated_types.insert(name.to_string());
-                    let constraints = self.format_constraints(&JsonSchema::Object(obj.clone()));
+                    let constraints = self.format_constraints_with_indent(
+                        &JsonSchema::Object(obj.clone()),
+                        &indent_str,
+                    );
                     if !constraints.is_empty() {
-                        output.push_str(&format!("{}-- {}\n", indent_str, constraints));
+                        output.push_str(&constraints);
                     }
                     output.push_str(&format!("{}export type {} = string", indent_str, name));
                 }
                 SingleType::Number | SingleType::Integer => {
                     self.generated_types.insert(name.to_string());
-                    let constraints = self.format_constraints(&JsonSchema::Object(obj.clone()));
+                    let constraints = self.format_constraints_with_indent(
+                        &JsonSchema::Object(obj.clone()),
+                        &indent_str,
+                    );
                     if !constraints.is_empty() {
-                        output.push_str(&format!("{}-- {}\n", indent_str, constraints));
+                        output.push_str(&constraints);
                     }
                     output.push_str(&format!("{}export type {} = number", indent_str, name));
                 }
@@ -479,7 +490,7 @@ impl SchemaConverter {
 
         self.generated_types.insert(name.to_string());
         Ok(format!(
-            "{}-- {}\n{}export type {} = {}",
+            "{}--- {}\n{}export type {} = {}",
             indent_str,
             comment,
             indent_str,
@@ -544,6 +555,64 @@ impl SchemaConverter {
         }
 
         constraints.join(", ")
+    }
+
+    fn format_constraints_with_indent(&self, schema: &JsonSchema, indent_str: &str) -> String {
+        let mut output = String::new();
+
+        if let JsonSchema::Object(obj) = schema {
+            // Number constraints
+            if let Some(min) = obj.minimum {
+                output.push_str(&format!("{}--- @minimum {}\n", indent_str, min));
+            }
+            if let Some(max) = obj.maximum {
+                output.push_str(&format!("{}--- @maximum {}\n", indent_str, max));
+            }
+            if let Some(ex_min) = obj.exclusive_minimum {
+                output.push_str(&format!("{}--- @exclusiveMinimum {}\n", indent_str, ex_min));
+            }
+            if let Some(ex_max) = obj.exclusive_maximum {
+                output.push_str(&format!("{}--- @exclusiveMaximum {}\n", indent_str, ex_max));
+            }
+            if let Some(multiple) = obj.multiple_of {
+                output.push_str(&format!("{}--- @multipleOf {}\n", indent_str, multiple));
+            }
+
+            // String constraints
+            if let Some(min_len) = obj.min_length {
+                output.push_str(&format!("{}--- @minLength {}\n", indent_str, min_len));
+            }
+            if let Some(max_len) = obj.max_length {
+                output.push_str(&format!("{}--- @maxLength {}\n", indent_str, max_len));
+            }
+            if let Some(pattern) = &obj.pattern {
+                output.push_str(&format!("{}--- @pattern {}\n", indent_str, pattern));
+            }
+            if let Some(format) = &obj.format {
+                output.push_str(&format!("{}--- @format {}\n", indent_str, format));
+            }
+
+            // Array constraints
+            if let Some(min_items) = obj.min_items {
+                output.push_str(&format!("{}--- @minItems {}\n", indent_str, min_items));
+            }
+            if let Some(max_items) = obj.max_items {
+                output.push_str(&format!("{}--- @maxItems {}\n", indent_str, max_items));
+            }
+            if let Some(true) = obj.unique_items {
+                output.push_str(&format!("{}--- @uniqueItems true\n", indent_str));
+            }
+
+            // Object constraints
+            if let Some(min_props) = obj.min_properties {
+                output.push_str(&format!("{}--- @minProperties {}\n", indent_str, min_props));
+            }
+            if let Some(max_props) = obj.max_properties {
+                output.push_str(&format!("{}--- @maxProperties {}\n", indent_str, max_props));
+            }
+        }
+
+        output
     }
 }
 
