@@ -91,7 +91,7 @@ impl SchemaConverter {
             if obj.properties.is_some() || obj.type_.is_some() {
                 // Create a merged schema that includes both the current schema and allOf schemas
                 let mut merged_output = String::new();
-                
+
                 // First, handle the current schema properties
                 if obj.properties.is_some() || obj.type_.is_some() {
                     let current_schema = SchemaObject {
@@ -101,7 +101,7 @@ impl SchemaConverter {
                     let current_result = self.convert_object(&current_schema, name, indent)?;
                     merged_output = current_result;
                 }
-                
+
                 return Ok(merged_output);
             } else {
                 return self.handle_composition(all_of, name, indent, "allOf");
@@ -127,27 +127,35 @@ impl SchemaConverter {
         // Handle type-specific conversion
         if let Some(type_) = &obj.type_ {
             let types = Self::get_single_types(type_);
-            
+
             // Handle union types (multiple types)
             if types.len() > 1 {
-                let type_strings: Vec<String> = types.iter().map(|t| match t {
-                    SingleType::String => "string".to_string(),
-                    SingleType::Number | SingleType::Integer => "number".to_string(),
-                    SingleType::Boolean => "boolean".to_string(),
-                    SingleType::Null => "nil".to_string(),
-                    SingleType::Array => "{ any }".to_string(),
-                    SingleType::Object => "{ [string]: any }".to_string(),
-                }).collect();
-                
+                let type_strings: Vec<String> = types
+                    .iter()
+                    .map(|t| match t {
+                        SingleType::String => "string".to_string(),
+                        SingleType::Number | SingleType::Integer => "number".to_string(),
+                        SingleType::Boolean => "boolean".to_string(),
+                        SingleType::Null => "nil".to_string(),
+                        SingleType::Array => "{ any }".to_string(),
+                        SingleType::Object => "{ [string]: any }".to_string(),
+                    })
+                    .collect();
+
                 self.generated_types.insert(name.to_string());
                 let constraints = self.format_constraints(&JsonSchema::Object(obj.clone()));
                 if !constraints.is_empty() {
                     output.push_str(&format!("{}-- {}\n", indent_str, constraints));
                 }
-                output.push_str(&format!("{}export type {} = {}", indent_str, name, type_strings.join(" | ")));
+                output.push_str(&format!(
+                    "{}export type {} = {}",
+                    indent_str,
+                    name,
+                    type_strings.join(" | ")
+                ));
                 return Ok(output);
             }
-            
+
             // Handle single type
             let single_type = types[0];
             match single_type {
@@ -200,7 +208,9 @@ impl SchemaConverter {
                     if let Some(additional) = &obj.additional_properties {
                         let add_type = match additional {
                             AdditionalProperties::Boolean(true) => "any".to_string(),
-                            AdditionalProperties::Boolean(false) => return Ok(output + &format!("{}}}", indent_str)), // No additional properties allowed
+                            AdditionalProperties::Boolean(false) => {
+                                return Ok(output + &format!("{}}}", indent_str))
+                            } // No additional properties allowed
                             AdditionalProperties::Schema(schema) => self.inline_type(schema)?,
                         };
                         output.push_str(&format!("{}    [string]: {},\n", indent_str, add_type));
@@ -330,20 +340,23 @@ impl SchemaConverter {
                 // Handle type-specific inline conversion
                 if let Some(type_) = &obj.type_ {
                     let types = Self::get_single_types(type_);
-                    
+
                     // Handle union types
                     if types.len() > 1 {
-                        let type_strings: Vec<String> = types.iter().map(|t| match t {
-                            SingleType::String => "string".to_string(),
-                            SingleType::Number | SingleType::Integer => "number".to_string(),
-                            SingleType::Boolean => "boolean".to_string(),
-                            SingleType::Null => "nil".to_string(),
-                            SingleType::Array => "{ any }".to_string(),
-                            SingleType::Object => "{ [string]: any }".to_string(),
-                        }).collect();
+                        let type_strings: Vec<String> = types
+                            .iter()
+                            .map(|t| match t {
+                                SingleType::String => "string".to_string(),
+                                SingleType::Number | SingleType::Integer => "number".to_string(),
+                                SingleType::Boolean => "boolean".to_string(),
+                                SingleType::Null => "nil".to_string(),
+                                SingleType::Array => "{ any }".to_string(),
+                                SingleType::Object => "{ [string]: any }".to_string(),
+                            })
+                            .collect();
                         return Ok(format!("({})", type_strings.join(" | ")));
                     }
-                    
+
                     // Handle single type
                     let single_type = types[0];
                     match single_type {
