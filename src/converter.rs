@@ -139,8 +139,8 @@ impl SchemaConverter {
                                 }
 
                                 output.push_str(&format!(
-                                    "{}    {}{}: {},\n",
-                                    indent_str, prop_name, optional_marker, prop_type
+                                    "{}    {}: {}{},\n",
+                                    indent_str, prop_name, prop_type, optional_marker
                                 ));
                             }
                         }
@@ -219,8 +219,8 @@ impl SchemaConverter {
                         let prop_type = self.inline_type(prop_schema)?;
 
                         output.push_str(&format!(
-                            "{}    {}{}: {},\n",
-                            indent_str, prop_name, optional_marker, prop_type
+                            "{}    {}: {}{},\n",
+                            indent_str, prop_name, prop_type, optional_marker
                         ));
                     }
                 }
