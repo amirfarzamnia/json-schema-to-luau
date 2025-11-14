@@ -34,17 +34,11 @@ cargo build
 # Run all tests
 cargo test
 
-# Run with output
-cargo test -- --nocapture
+# Run only integration tests
+cargo test integration_test
 
-# Run specific test
-cargo test test_simple_object
-```
-
-### Running Examples
-
-```bash
-cargo run --example basic
+# Run a specific test
+cargo test test_library_convert_schema
 ```
 
 ### Using the CLI during development
@@ -96,7 +90,6 @@ Some areas where contributions would be particularly welcome:
 - Better error messages
 - Performance improvements
 - Documentation improvements
-- More examples
 - CLI enhancements
 
 ## Questions?

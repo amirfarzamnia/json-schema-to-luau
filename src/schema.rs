@@ -5,7 +5,7 @@ use std::collections::HashMap;
 #[serde(untagged)]
 pub enum JsonSchema {
     Boolean(bool),
-    Object(SchemaObject),
+    Object(Box<SchemaObject>),
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq)]

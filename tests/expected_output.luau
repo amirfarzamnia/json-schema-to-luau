@@ -78,6 +78,7 @@ export type Root = {
     version: string,
 }
 
+--- Address information
 export type Address = {
     --- @minLength 1
     --- @maxLength 50
@@ -94,6 +95,7 @@ export type Address = {
     street: string,
 }
 
+--- Dimensions
 export type Dimensions = {
     --- @minimum 0
     depth: number?,
@@ -104,9 +106,11 @@ export type Dimensions = {
     width: number?,
 }
 
+--- Enhanced Dimensions
 --- Intersection type (all conditions must be met)
 export type EnhancedDimensions = Dimensions & { weight: number?, weightUnit: "kg" | "lb" | "g"? }
 
+--- Extra payload
 export type ExtraPayload = {
     data: any?,
     kind: "analytics" | "metrics" | "events" | "logs",
@@ -114,6 +118,7 @@ export type ExtraPayload = {
     value: number?,
 }
 
+--- Geographic coordinates
 export type GeoCoordinates = {
     --- Elevation in meters
     elevation: number?,
@@ -125,6 +130,7 @@ export type GeoCoordinates = {
     longitude: number,
 }
 
+--- Person information
 export type Person = {
     --- @minimum 0
     --- @maximum 150
@@ -148,6 +154,7 @@ export type Person = {
     tags: { string }?,
 }
 
+--- Product information
 export type Product = {
     --- @minItems 1
     categories: { "electronics" | "clothing" | "books" | "home" | "sports" }?,
@@ -165,6 +172,7 @@ export type Product = {
     price: number,
 }
 
+--- Timestamps
 export type Timestamps = {
     --- @format date-time
     createdAt: string?,

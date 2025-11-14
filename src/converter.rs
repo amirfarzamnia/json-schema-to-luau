@@ -63,12 +63,12 @@ impl SchemaConverter {
 
         for def_name in def_names {
             let pascal_def_name = def_name.to_case(Case::Pascal);
-            if !self.generated_types.contains(&pascal_def_name) {
-                if let Some(def_schema) = self.definitions.get(&def_name).cloned() {
-                    output.push_str("\n\n");
-                    let def_type = self.convert_schema(&def_schema, &pascal_def_name, 0)?;
-                    output.push_str(&def_type);
-                }
+            if !self.generated_types.contains(&pascal_def_name)
+                && let Some(def_schema) = self.definitions.get(&def_name).cloned()
+            {
+                output.push_str("\n\n");
+                let def_type = self.convert_schema(&def_schema, &pascal_def_name, 0)?;
+                output.push_str(&def_type);
             }
         }
 
@@ -260,15 +260,13 @@ impl SchemaConverter {
 
     /// Resolve reference if object is a $ref
     fn resolve_reference_if_needed<'a>(&'a self, obj: &'a SchemaObject) -> &'a SchemaObject {
-        if let Some(ref_path) = &obj.ref_ {
-            if let Some(def_name) = ref_path
+        if let Some(ref_path) = &obj.ref_
+            && let Some(def_name) = ref_path
                 .strip_prefix("#/$defs/")
                 .or_else(|| ref_path.strip_prefix("#/definitions/"))
-            {
-                if let Some(JsonSchema::Object(ref_obj)) = self.definitions.get(def_name) {
-                    return ref_obj;
-                }
-            }
+            && let Some(JsonSchema::Object(ref_obj)) = self.definitions.get(def_name)
+        {
+            return ref_obj;
         }
         obj
     }
@@ -337,8 +335,8 @@ impl SchemaConverter {
         indent_str: &str,
     ) -> Result<String> {
         let type_strings = self.map_types_to_strings(types);
-        let constraints =
-            self.format_constraints_with_indent(&JsonSchema::Object(obj.clone()), indent_str);
+        let constraints = self
+            .format_constraints_with_indent(&JsonSchema::Object(Box::new(obj.clone())), indent_str);
 
         Ok(format!(
             "{}{}export type {} = {}",
@@ -368,8 +366,10 @@ impl SchemaConverter {
                     SingleType::Number | SingleType::Integer => "number",
                     _ => unreachable!(),
                 };
-                let constraints = self
-                    .format_constraints_with_indent(&JsonSchema::Object(obj.clone()), &indent_str);
+                let constraints = self.format_constraints_with_indent(
+                    &JsonSchema::Object(Box::new(obj.clone())),
+                    &indent_str,
+                );
 
                 Ok(format!(
                     "{}{}export type {} = {}",
@@ -461,10 +461,10 @@ impl SchemaConverter {
         output: &mut String,
     ) -> Result<()> {
         // Add property description
-        if let JsonSchema::Object(prop_obj) = prop_schema {
-            if let Some(desc) = &prop_obj.description {
-                output.push_str(&format!("{}    --- {}\n", indent_str, desc));
-            }
+        if let JsonSchema::Object(prop_obj) = prop_schema
+            && let Some(desc) = &prop_obj.description
+        {
+            output.push_str(&format!("{}    --- {}\n", indent_str, desc));
         }
 
         let prop_type = self.inline_type(prop_schema)?;
@@ -475,17 +475,14 @@ impl SchemaConverter {
         }
 
         // Add format constraints for additionalProperties if they exist
-        if let JsonSchema::Object(prop_obj) = prop_schema {
-            if let Some(AdditionalProperties::Schema(additional_schema)) =
+        if let JsonSchema::Object(prop_obj) = prop_schema
+            && let Some(AdditionalProperties::Schema(additional_schema)) =
                 &prop_obj.additional_properties
-            {
-                let additional_constraints = self.format_constraints_with_indent(
-                    additional_schema,
-                    &format!("{}    ", indent_str),
-                );
-                if !additional_constraints.is_empty() {
-                    output.push_str(&additional_constraints);
-                }
+        {
+            let additional_constraints = self
+                .format_constraints_with_indent(additional_schema, &format!("{}    ", indent_str));
+            if !additional_constraints.is_empty() {
+                output.push_str(&additional_constraints);
             }
         }
 
@@ -541,8 +538,10 @@ impl SchemaConverter {
             "any".to_string()
         };
 
-        let constraints =
-            self.format_constraints_with_indent(&JsonSchema::Object(obj.clone()), &indent_str);
+        let constraints = self.format_constraints_with_indent(
+            &JsonSchema::Object(Box::new(obj.clone())),
+            &indent_str,
+        );
 
         Ok(format!(
             "{}{}export type {} = {{ {} }}",

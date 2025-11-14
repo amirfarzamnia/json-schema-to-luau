@@ -8,6 +8,7 @@
     "address": {
       "type": "object",
       "required": ["street", "city", "country"],
+      "description": "Address information",
       "properties": {
         "street": {
           "type": "string",
@@ -41,6 +42,7 @@
     "geoCoordinates": {
       "type": "object",
       "required": ["latitude", "longitude"],
+      "description": "Geographic coordinates",
       "properties": {
         "latitude": {
           "type": "number",
@@ -62,6 +64,7 @@
     "person": {
       "type": "object",
       "required": ["firstName", "lastName", "age"],
+      "description": "Person information",
       "properties": {
         "firstName": {
           "type": "string",
@@ -110,6 +113,7 @@
     "product": {
       "type": "object",
       "required": ["id", "name", "price"],
+      "description": "Product information",
       "properties": {
         "id": {
           "type": "string",
@@ -155,6 +159,7 @@
     },
     "timestamps": {
       "type": "object",
+      "description": "Timestamps",
       "properties": {
         "createdAt": {
           "type": "string",
@@ -169,6 +174,7 @@
     },
     "extraPayload": {
       "type": "object",
+      "description": "Extra payload",
       "properties": {
         "kind": {
           "type": "string",
@@ -185,6 +191,7 @@
     },
     "dimensions": {
       "type": "object",
+      "description": "Dimensions",
       "properties": {
         "width": {
           "type": "number",
@@ -207,6 +214,7 @@
       "additionalProperties": false
     },
     "enhancedDimensions": {
+      "description": "Enhanced Dimensions",
       "allOf": [
         { "$ref": "#/definitions/dimensions" },
         {
