@@ -1,5 +1,12 @@
 # json-schema-to-luau
 
+[<img alt="Crates.io" src="https://img.shields.io/crates/v/json-schema-to-luau?style=flat-square&logo=rust" height="20">](https://crates.io/crates/json-schema-to-luau)
+[<img alt="docs.rs" src="https://img.shields.io/docsrs/json-schema-to-luau?style=flat-square&logo=docs.rs" height="20">](https://docs.rs/json-schema-to-luau)
+[<img alt="GitHub Actions Workflow Status" src="https://img.shields.io/github/actions/workflow/status/amirfarzamnia/json-schema-to-luau/rust.yml?style=flat-square&logo=githubactions&logoColor=%23FFF" height="20">](https://github.com/amirfarzamnia/json-schema-to-luau/actions?query=branch%3Amaster)
+[<img alt="Issues" src="https://img.shields.io/github/issues/amirfarzamnia/json-schema-to-luau?style=flat-square&logo=github" height="20">](https://github.com/amirfarzamnia/json-schema-to-luau/issues)
+[<img alt="GitHub Repo stars" src="https://img.shields.io/github/stars/amirfarzamnia/json-schema-to-luau?style=flat-square&logo=github" height="20">](https://github.com/amirfarzamnia/json-schema-to-luau/stargazers)
+[<img alt="License" src="https://img.shields.io/github/license/amirfarzamnia/json-schema-to-luau?style=flat-square" height="20">](https://github.com/amirfarzamnia/json-schema-to-luau/blob/master/LICENSE)
+
 Convert JSON Schema to Luau type definitions with full support for constraints and advanced schema features.
 
 ## Features
