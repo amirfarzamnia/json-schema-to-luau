@@ -307,4 +307,4 @@ Useful for advanced embedding or reusing definitions.
 
 # License
 
-[MIT](LICENSE.md) License
+[MIT](LICENSE) License
