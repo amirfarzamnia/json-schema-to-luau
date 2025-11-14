@@ -5,7 +5,9 @@ This directory contains comprehensive integration tests for the json-schema-to-l
 ## Test Files
 
 ### `test_schema.json`
+
 A comprehensive JSON Schema that includes:
+
 - **Basic types**: string, number, integer, boolean
 - **Complex types**: object, array
 - **Constraints**: minimum/maximum values, string length limits, array size limits
@@ -16,18 +18,22 @@ A comprehensive JSON Schema that includes:
 - **Descriptions and metadata**
 
 ### `expected_output.luau`
+
 The expected Luau type definition output when converting `test_schema.json`. This serves as the reference for validating both library and CLI output.
 
 ### `integration_test.rs`
+
 Comprehensive test suite that validates:
 
 #### Library Tests
+
 - **`test_library_convert_schema()`**: Tests the basic `convert_schema()` function
 - **`test_library_convert_schema_with_custom_name()`**: Tests `convert_schema_with_name()` with custom type names
 - **`test_library_invalid_schema()`**: Tests error handling for invalid schema types
 - **`test_library_malformed_json()`**: Tests error handling for malformed JSON
 
 #### CLI Tests
+
 - **`test_cli_basic_conversion()`**: Tests basic CLI usage with input file
 - **`test_cli_with_custom_type_name()`**: Tests CLI with `--type-name` flag
 - **`test_cli_with_output_file()`**: Tests CLI with `--output` flag for file output
@@ -48,6 +54,7 @@ cargo test test_library_convert_schema
 ## Test Coverage
 
 The tests validate:
+
 - ✅ **Library API**: Both `convert_schema()` and `convert_schema_with_name()` functions
 - ✅ **CLI functionality**: Input files, output files, custom type names
 - ✅ **Error handling**: Invalid schemas and malformed JSON
