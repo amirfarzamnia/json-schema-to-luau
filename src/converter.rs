@@ -789,7 +789,7 @@ impl SchemaConverter {
         "    ".repeat(indent)
     }
 
-    // Constraint formatting methods remain the same
+    /// Constraint formatting methods remain the same
     fn format_constraints_with_indent(&self, schema: &JsonSchema, indent_str: &str) -> String {
         let mut output = String::new();
 
@@ -803,6 +803,7 @@ impl SchemaConverter {
         output
     }
 
+    /// Add numeric constraints with indentation
     fn add_numeric_constraints_indent(
         &self,
         obj: &SchemaObject,
@@ -826,6 +827,7 @@ impl SchemaConverter {
         }
     }
 
+    /// Add string constraints with indentation
     fn add_string_constraints_indent(
         &self,
         obj: &SchemaObject,
@@ -846,6 +848,7 @@ impl SchemaConverter {
         }
     }
 
+    /// Add array constraints with indentation
     fn add_array_constraints_indent(
         &self,
         obj: &SchemaObject,
@@ -863,6 +866,7 @@ impl SchemaConverter {
         }
     }
 
+    /// Add object constraints with indentation
     fn add_object_constraints_indent(
         &self,
         obj: &SchemaObject,
