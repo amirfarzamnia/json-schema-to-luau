@@ -6,11 +6,15 @@ use crate::schema::{AdditionalProperties, JsonSchema, SchemaObject, SchemaType, 
 
 /// Converts JSON Schema to Luau type definitions
 pub struct SchemaConverter {
+    /// Map of definitions to avoid duplicates
     definitions: HashMap<String, JsonSchema>,
+
+    /// Set of generated types to avoid duplicates
     generated_types: HashSet<String>,
 }
 
 impl SchemaConverter {
+    /// Create new SchemaConverter
     pub fn new() -> Self {
         Self {
             definitions: HashMap::new(),
@@ -573,6 +577,7 @@ impl SchemaConverter {
         Ok(format!("{}export type {} = {}", indent_str, name, literal))
     }
 
+    /// Method for inline type
     fn inline_type(&mut self, schema: &JsonSchema) -> Result<String> {
         match schema {
             JsonSchema::Boolean(true) => Ok("any".to_string()),
@@ -581,6 +586,7 @@ impl SchemaConverter {
         }
     }
 
+    /// Method for inline object type
     fn inline_object_type(&mut self, obj: &SchemaObject) -> Result<String> {
         // Handle $ref
         if let Some(ref_path) = &obj.ref_ {
@@ -604,6 +610,7 @@ impl SchemaConverter {
         self.inline_type_specific(obj)
     }
 
+    /// Method for inline composition types
     fn inline_composition_types(&mut self, obj: &SchemaObject) -> Result<Option<String>> {
         // For brevity, keeping the original implementation here
         if let Some(any_of) = &obj.any_of {
@@ -661,6 +668,7 @@ impl SchemaConverter {
         Ok(None)
     }
 
+    /// Method for inline type specific
     fn inline_type_specific(&mut self, obj: &SchemaObject) -> Result<String> {
         if let Some(type_) = &obj.type_ {
             let types = Self::get_single_types(type_);
@@ -693,6 +701,7 @@ impl SchemaConverter {
         }
     }
 
+    /// Method for inline object properties
     fn inline_object_properties(&mut self, obj: &SchemaObject) -> Result<String> {
         if let Some(properties) = &obj.properties {
             let mut inline = String::from("{ ");
@@ -731,6 +740,7 @@ impl SchemaConverter {
         }
     }
 
+    /// Method for converting enum values
     fn convert_enum(&self, values: &[serde_json::Value]) -> String {
         let (all_strings, all_numbers) =
             values
@@ -760,6 +770,7 @@ impl SchemaConverter {
         "string | number | boolean | nil".to_string()
     }
 
+    /// Method for converting const values
     fn convert_const(&self, value: &serde_json::Value) -> String {
         match value {
             serde_json::Value::String(s) => format!("\"{}\"", s),
@@ -770,6 +781,7 @@ impl SchemaConverter {
         }
     }
 
+    /// Method for resolving $ref paths
     fn resolve_ref(&self, ref_path: &str) -> Result<String> {
         if let Some(def_name) = ref_path.strip_prefix("#/definitions/") {
             return Ok(def_name.to_case(Case::Pascal));
