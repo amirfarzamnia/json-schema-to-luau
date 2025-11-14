@@ -179,3 +179,5 @@ export type Timestamps = {
     --- @format date-time
     updatedAt: string?,
 }
+
+return {}

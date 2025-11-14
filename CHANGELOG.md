@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.2] - 2025-11-14
+
+### Fixed
+
+- Pure Luau compatibility: all generated `.luau` schema files now include a trailing `return {}` to satisfy the standalone Luau runtime’s requirement that modules return exactly one value.
+
 ## [1.0.1] - 2025-11-14
 
 ### Fixed
@@ -56,12 +62,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Support for composition types (allOf, anyOf, oneOf)
 - Support for nested objects and arrays
 - Constraint documentation in comments:
-
   - Number constraints (minimum, maximum, exclusiveMinimum, exclusiveMaximum, multipleOf)
   - String constraints (minLength, maxLength, pattern, format)
   - Array constraints (minItems, maxItems, uniqueItems)
   - Object constraints (minProperties, maxProperties)
-
 - Support for additionalProperties
 - Support for pattern properties
 - Support for descriptions as comments
@@ -70,7 +74,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Comprehensive test suite
 - Full documentation and examples
 
-[Unreleased]: https://github.com/amirfarzamnia/json-schema-to-luau/compare/v1.0.1...HEAD
+[Unreleased]: https://github.com/amirfarzamnia/json-schema-to-luau/compare/v1.0.2...HEAD
+[1.0.2]: https://github.com/amirfarzamnia/json-schema-to-luau/compare/v1.0.1...v1.0.2
 [1.0.1]: https://github.com/amirfarzamnia/json-schema-to-luau/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/amirfarzamnia/json-schema-to-luau/compare/v0.1.0...v1.0.0
 [0.1.0]: https://github.com/amirfarzamnia/json-schema-to-luau/releases/tag/v0.1.0

@@ -47,6 +47,9 @@ impl SchemaConverter {
             output.push('\n');
         }
 
+        // Append return {} so standard Luau can require the module
+        output.push_str("\nreturn {}\n");
+
         Ok(output)
     }
 
