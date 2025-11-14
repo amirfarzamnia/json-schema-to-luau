@@ -42,6 +42,7 @@ export type Root = {
     --- String field that can be explicitly set to null
     nullableField: (string | nil)?,
     --- @maxProperties 10
+    --- @minimum 0
     numericConfig: { [string]: number }?,
     --- Alternative numeric identifier
     --- @minimum 1
@@ -69,6 +70,7 @@ export type Root = {
     --- @maxItems 50
     --- @uniqueItems true
     tags: { string }?,
+    --- @format date-time
     timestamps: { [string]: string }?,
     --- @format date-time
     updatedAt: string?,
@@ -102,7 +104,8 @@ export type Dimensions = {
     width: number?,
 }
 
-export type EnhancedDimensions = (Dimensions & { weight: number?, weightUnit: "kg" | "lb" | "g"? })
+--- Intersection type (all conditions must be met)
+export type EnhancedDimensions = Dimensions & { weight: number?, weightUnit: "kg" | "lb" | "g"? }
 
 export type ExtraPayload = {
     data: any?,

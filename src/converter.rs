@@ -4,6 +4,7 @@ use std::collections::{HashMap, HashSet};
 use crate::error::{ConversionError, Result};
 use crate::schema::{AdditionalProperties, JsonSchema, SchemaObject, SchemaType, SingleType};
 
+/// Converts JSON Schema to Luau type definitions
 pub struct SchemaConverter {
     definitions: HashMap<String, JsonSchema>,
     generated_types: HashSet<String>,
@@ -17,10 +18,12 @@ impl SchemaConverter {
         }
     }
 
+    /// Convert schema to Luau type definitions with default root name
     pub fn convert(&self, schema: &JsonSchema) -> Result<String> {
         self.convert_with_name(schema, "Root")
     }
 
+    /// Convert schema to Luau type definitions with custom type name
     pub fn convert_with_name(&self, schema: &JsonSchema, type_name: &str) -> Result<String> {
         let mut converter = self.clone();
         converter.extract_definitions(schema);
@@ -43,17 +46,17 @@ impl SchemaConverter {
         Ok(output)
     }
 
+    /// Extract definitions from schema object
     fn extract_definitions(&mut self, schema: &JsonSchema) {
         if let JsonSchema::Object(obj) = schema {
-            if let Some(defs) = &obj.definitions {
-                self.definitions.extend(defs.clone());
-            }
-            if let Some(defs) = &obj.defs {
+            // Extract from both definitions and $defs
+            for defs in [&obj.definitions, &obj.defs].into_iter().flatten() {
                 self.definitions.extend(defs.clone());
             }
         }
     }
 
+    /// Generate all definition types in sorted order
     fn generate_definitions(&mut self, output: &mut String) -> Result<()> {
         let mut def_names: Vec<_> = self.definitions.keys().cloned().collect();
         def_names.sort();
@@ -72,6 +75,7 @@ impl SchemaConverter {
         Ok(())
     }
 
+    /// Main schema conversion entry point
     fn convert_schema(&mut self, schema: &JsonSchema, name: &str, indent: usize) -> Result<String> {
         match schema {
             JsonSchema::Boolean(true) => Ok("any".to_string()),
@@ -80,6 +84,7 @@ impl SchemaConverter {
         }
     }
 
+    /// Extract single types from SchemaType
     fn get_single_types(schema_type: &SchemaType) -> Vec<&SingleType> {
         match schema_type {
             SchemaType::Single(single) => vec![single],
@@ -87,155 +92,221 @@ impl SchemaConverter {
         }
     }
 
+    /// Convert schema object to type definition
     fn convert_object(&mut self, obj: &SchemaObject, name: &str, indent: usize) -> Result<String> {
-        let indent_str = "    ".repeat(indent);
-        let mut output = String::new();
+        let indent_str = Self::create_indent(indent);
 
-        // Add description as comment
-        if let Some(desc) = &obj.description {
-            output.push_str(&format!("{}--- {}\n", indent_str, desc));
-        }
+        // Add description as comment if present
+        let description_comment = if let Some(desc) = &obj.description {
+            format!("{}--- {}\n", indent_str, desc)
+        } else {
+            String::new()
+        };
 
         // Handle references
         if let Some(ref_path) = &obj.ref_ {
-            return self.resolve_ref(ref_path);
+            return self.resolve_ref(ref_path).map(|resolved| {
+                format!(
+                    "{}{}export type {} = {}",
+                    description_comment, indent_str, name, resolved
+                )
+            });
         }
 
         // Handle composition types (allOf, anyOf, oneOf)
-        if let Some(result) = self.handle_composition_types(obj, name, indent)? {
+        if let Some(mut result) = self.handle_composition_types(obj, name, indent)? {
+            if !description_comment.is_empty() {
+                result = format!("{}{}", description_comment, result);
+            }
             return Ok(result);
         }
 
-        // Handle enum
+        // Handle enum and const values
         if let Some(enum_values) = &obj.enum_ {
-            self.generated_types.insert(name.to_string());
-            let indent_str = "    ".repeat(indent);
-            let union = self.convert_enum(enum_values);
-            return Ok(format!("{}export type {} = {}", indent_str, name, union));
+            let mut result = self.generate_enum_type(enum_values, name, &indent_str)?;
+            if !description_comment.is_empty() {
+                result = format!("{}{}", description_comment, result);
+            }
+            return Ok(result);
         }
 
-        // Handle const
         if let Some(const_value) = &obj.const_ {
-            self.generated_types.insert(name.to_string());
-            let indent_str = "    ".repeat(indent);
-            let literal = self.convert_const(const_value);
-            return Ok(format!("{}export type {} = {}", indent_str, name, literal));
+            let mut result = self.generate_const_type(const_value, name, &indent_str)?;
+            if !description_comment.is_empty() {
+                result = format!("{}{}", description_comment, result);
+            }
+            return Ok(result);
         }
 
         // Handle type-specific conversion
-        self.handle_type_conversion(obj, name, indent, &mut output)?;
-
-        Ok(output)
+        let mut result = self.handle_type_conversion(obj, name, indent)?;
+        if !description_comment.is_empty() {
+            result = format!("{}{}", description_comment, result);
+        }
+        Ok(result)
     }
 
+    /// Handle composition types: allOf, anyOf, oneOf
     fn handle_composition_types(
         &mut self,
         obj: &SchemaObject,
         name: &str,
         indent: usize,
     ) -> Result<Option<String>> {
-        // allOf handling
-        if let Some(all_of) = &obj.all_of {
-            let parent_has_props = obj.properties.is_some()
-                || obj.additional_properties.is_some()
-                || obj.required.is_some();
-
-            // If parent schema has its own properties → MERGE (your documented behavior)
-            if parent_has_props {
-                let mut merged = obj.clone();
-                merged.all_of = None;
-
-                for sub in all_of {
-                    if let JsonSchema::Object(sub_obj) = sub {
-                        // Handle $ref by resolving it first
-                        let resolved_obj = if let Some(ref_path) = &sub_obj.ref_ {
-                            // Resolve the reference to get the actual schema
-                            if let Some(def_name) = ref_path.strip_prefix("#/$defs/") {
-                                if let Some(JsonSchema::Object(ref_obj)) =
-                                    self.definitions.get(def_name)
-                                {
-                                    ref_obj
-                                } else {
-                                    sub_obj
-                                }
-                            } else if let Some(def_name) = ref_path.strip_prefix("#/definitions/") {
-                                if let Some(JsonSchema::Object(ref_obj)) =
-                                    self.definitions.get(def_name)
-                                {
-                                    ref_obj
-                                } else {
-                                    sub_obj
-                                }
-                            } else {
-                                sub_obj
-                            }
-                        } else {
-                            sub_obj
-                        };
-
-                        // merge properties
-                        if let Some(sub_props) = &resolved_obj.properties {
-                            merged
-                                .properties
-                                .get_or_insert_with(Default::default)
-                                .extend(sub_props.clone());
-                        }
-
-                        // merge required
-                        if let Some(sub_req) = &resolved_obj.required {
-                            merged
-                                .required
-                                .get_or_insert_with(Default::default)
-                                .extend(sub_req.clone());
-                        }
-
-                        // merge additionalProperties
-                        if let Some(additional) = &resolved_obj.additional_properties {
-                            merged.additional_properties = Some(additional.clone());
-                        }
-                    }
-                }
-
-                return Ok(Some(self.convert_object(&merged, name, indent)?));
-            }
-
-            // No parent properties → INTERSECTION
-            let types: Result<Vec<_>> = all_of.iter().map(|s| self.inline_type(s)).collect();
-            let indent_str = "    ".repeat(indent);
-            self.generated_types.insert(name.to_string());
-
-            return Ok(Some(format!(
-                "{}export type {} = ({})",
-                indent_str,
+        match self.get_composition_type(obj) {
+            Some(("allOf", schemas)) => self.handle_all_of(obj, schemas, name, indent),
+            Some(("anyOf", schemas)) => self.handle_union_type(
+                schemas,
                 name,
-                types?.join(" & ")
-            )));
+                indent,
+                "anyOf",
+                "Union type (any of these types)",
+            ),
+            Some(("oneOf", schemas)) => self.handle_union_type(
+                schemas,
+                name,
+                indent,
+                "oneOf",
+                "Union type (exactly one of these types)",
+            ),
+            _ => Ok(None),
         }
-
-        // anyOf / oneOf
-        if let Some(any_of) = &obj.any_of {
-            return Ok(Some(
-                self.handle_composition(any_of, name, indent, "anyOf")?,
-            ));
-        }
-
-        if let Some(one_of) = &obj.one_of {
-            return Ok(Some(
-                self.handle_composition(one_of, name, indent, "oneOf")?,
-            ));
-        }
-
-        Ok(None)
     }
 
+    /// Get composition type and schemas if present
+    fn get_composition_type<'a>(
+        &self,
+        obj: &'a SchemaObject,
+    ) -> Option<(&'static str, &'a Vec<JsonSchema>)> {
+        if let Some(all_of) = &obj.all_of {
+            Some(("allOf", all_of))
+        } else if let Some(any_of) = &obj.any_of {
+            Some(("anyOf", any_of))
+        } else if let Some(one_of) = &obj.one_of {
+            Some(("oneOf", one_of))
+        } else {
+            None
+        }
+    }
+
+    /// Handle allOf composition with merging or intersection
+    fn handle_all_of(
+        &mut self,
+        obj: &SchemaObject,
+        all_of: &[JsonSchema],
+        name: &str,
+        indent: usize,
+    ) -> Result<Option<String>> {
+        let parent_has_props = obj.properties.is_some()
+            || obj.additional_properties.is_some()
+            || obj.required.is_some();
+
+        if parent_has_props {
+            // Merge parent properties with allOf schemas
+            let merged = self.merge_all_of_schemas(obj, all_of)?;
+            self.convert_object(&merged, name, indent).map(Some)
+        } else {
+            // Create intersection type
+            self.handle_union_type(
+                all_of,
+                name,
+                indent,
+                "allOf",
+                "Intersection type (all conditions must be met)",
+            )
+        }
+    }
+
+    /// Merge allOf schemas into parent schema
+    fn merge_all_of_schemas(
+        &mut self,
+        parent: &SchemaObject,
+        all_of: &[JsonSchema],
+    ) -> Result<SchemaObject> {
+        let mut merged = parent.clone();
+        merged.all_of = None;
+        // Remove description to prevent duplicate comments when recursively converting
+        merged.description = None;
+
+        for sub in all_of {
+            if let JsonSchema::Object(sub_obj) = sub {
+                let resolved_obj = self.resolve_reference_if_needed(sub_obj);
+
+                // Merge properties
+                if let Some(sub_props) = &resolved_obj.properties {
+                    merged
+                        .properties
+                        .get_or_insert_with(Default::default)
+                        .extend(sub_props.clone());
+                }
+
+                // Merge required fields
+                if let Some(sub_req) = &resolved_obj.required {
+                    merged
+                        .required
+                        .get_or_insert_with(Default::default)
+                        .extend(sub_req.clone());
+                }
+
+                // Merge additionalProperties (last one wins)
+                if let Some(additional) = &resolved_obj.additional_properties {
+                    merged.additional_properties = Some(additional.clone());
+                }
+            }
+        }
+
+        Ok(merged)
+    }
+
+    /// Resolve reference if object is a $ref
+    fn resolve_reference_if_needed<'a>(&'a self, obj: &'a SchemaObject) -> &'a SchemaObject {
+        if let Some(ref_path) = &obj.ref_ {
+            if let Some(def_name) = ref_path
+                .strip_prefix("#/$defs/")
+                .or_else(|| ref_path.strip_prefix("#/definitions/"))
+            {
+                if let Some(JsonSchema::Object(ref_obj)) = self.definitions.get(def_name) {
+                    return ref_obj;
+                }
+            }
+        }
+        obj
+    }
+
+    /// Handle union types (anyOf, oneOf) and intersection (allOf without parent props)
+    fn handle_union_type(
+        &mut self,
+        schemas: &[JsonSchema],
+        name: &str,
+        indent: usize,
+        kind: &str,
+        comment: &str,
+    ) -> Result<Option<String>> {
+        let indent_str = Self::create_indent(indent);
+        let types: Result<Vec<_>> = schemas.iter().map(|s| self.inline_type(s)).collect();
+
+        let separator = if kind == "allOf" { " & " } else { " | " };
+
+        self.generated_types.insert(name.to_string());
+
+        Ok(Some(format!(
+            "{}--- {}\n{}export type {} = {}",
+            indent_str,
+            comment,
+            indent_str,
+            name,
+            types?.join(separator)
+        )))
+    }
+
+    /// Handle type-specific conversion logic
     fn handle_type_conversion(
         &mut self,
         obj: &SchemaObject,
         name: &str,
         indent: usize,
-        output: &mut String,
-    ) -> Result<()> {
-        let indent_str = "    ".repeat(indent);
+    ) -> Result<String> {
+        let indent_str = Self::create_indent(indent);
         self.generated_types.insert(name.to_string());
 
         if let Some(type_) = &obj.type_ {
@@ -243,65 +314,74 @@ impl SchemaConverter {
 
             // Handle union types (multiple types)
             if types.len() > 1 {
-                let type_strings = self.map_types_to_strings(&types);
-                let constraints = self
-                    .format_constraints_with_indent(&JsonSchema::Object(obj.clone()), &indent_str);
-                if !constraints.is_empty() {
-                    output.push_str(&constraints);
-                }
-                output.push_str(&format!(
-                    "{}export type {} = {}",
-                    indent_str,
-                    name,
-                    type_strings.join(" | ")
-                ));
-                return Ok(());
+                return self.generate_union_type(obj, name, &types, &indent_str);
             }
 
             // Handle single type
             let single_type = types[0];
-            match single_type {
-                SingleType::Object => {
-                    self.generate_object_type(obj, name, indent, output)?;
-                }
-                SingleType::Array => {
-                    self.generate_array_type(obj, name, indent, output)?;
-                }
-                SingleType::String | SingleType::Number | SingleType::Integer => {
-                    let type_name = match single_type {
-                        SingleType::String => "string",
-                        SingleType::Number | SingleType::Integer => "number",
-                        _ => unreachable!(),
-                    };
-                    let constraints = self.format_constraints_with_indent(
-                        &JsonSchema::Object(obj.clone()),
-                        &indent_str,
-                    );
-                    if !constraints.is_empty() {
-                        output.push_str(&constraints);
-                    }
-                    output.push_str(&format!(
-                        "{}export type {} = {}",
-                        indent_str, name, type_name
-                    ));
-                }
-                SingleType::Boolean => {
-                    output.push_str(&format!("{}export type {} = boolean", indent_str, name));
-                }
-                SingleType::Null => {
-                    output.push_str(&format!("{}export type {} = nil", indent_str, name));
-                }
-            }
+            self.generate_single_type(obj, name, single_type, indent)
         } else if obj.properties.is_some() || obj.additional_properties.is_some() {
             // Infer as object if properties exist
-            self.generate_object_type(obj, name, indent, output)?;
+            self.generate_object_type(obj, name, indent)
         } else {
-            output.push_str(&format!("{}export type {} = any", indent_str, name));
+            Ok(format!("{}export type {} = any", indent_str, name))
         }
-
-        Ok(())
     }
 
+    /// Generate union type for multiple possible types
+    fn generate_union_type(
+        &mut self,
+        obj: &SchemaObject,
+        name: &str,
+        types: &[&SingleType],
+        indent_str: &str,
+    ) -> Result<String> {
+        let type_strings = self.map_types_to_strings(types);
+        let constraints =
+            self.format_constraints_with_indent(&JsonSchema::Object(obj.clone()), indent_str);
+
+        Ok(format!(
+            "{}{}export type {} = {}",
+            constraints,
+            indent_str,
+            name,
+            type_strings.join(" | ")
+        ))
+    }
+
+    /// Generate type for a single schema type
+    fn generate_single_type(
+        &mut self,
+        obj: &SchemaObject,
+        name: &str,
+        single_type: &SingleType,
+        indent: usize,
+    ) -> Result<String> {
+        let indent_str = Self::create_indent(indent);
+
+        match single_type {
+            SingleType::Object => self.generate_object_type(obj, name, indent),
+            SingleType::Array => self.generate_array_type(obj, name, indent),
+            SingleType::String | SingleType::Number | SingleType::Integer => {
+                let type_name = match single_type {
+                    SingleType::String => "string",
+                    SingleType::Number | SingleType::Integer => "number",
+                    _ => unreachable!(),
+                };
+                let constraints = self
+                    .format_constraints_with_indent(&JsonSchema::Object(obj.clone()), &indent_str);
+
+                Ok(format!(
+                    "{}{}export type {} = {}",
+                    constraints, indent_str, name, type_name
+                ))
+            }
+            SingleType::Boolean => Ok(format!("{}export type {} = boolean", indent_str, name)),
+            SingleType::Null => Ok(format!("{}export type {} = nil", indent_str, name)),
+        }
+    }
+
+    /// Map SingleType variants to their string representations
     fn map_types_to_strings(&self, types: &[&SingleType]) -> Vec<String> {
         types
             .iter()
@@ -316,28 +396,29 @@ impl SchemaConverter {
             .collect()
     }
 
+    /// Generate object type definition
     fn generate_object_type(
         &mut self,
         obj: &SchemaObject,
         name: &str,
         indent: usize,
-        output: &mut String,
-    ) -> Result<()> {
-        let indent_str = "    ".repeat(indent);
-        output.push_str(&format!("{}export type {} = {{\n", indent_str, name));
+    ) -> Result<String> {
+        let indent_str = Self::create_indent(indent);
+        let mut output = format!("{}export type {} = {{\n", indent_str, name);
 
         // Handle properties
         if let Some(properties) = &obj.properties {
-            self.generate_properties(obj, properties, indent, output)?;
+            self.generate_properties(obj, properties, indent, &mut output)?;
         }
 
         // Handle additionalProperties
-        self.generate_additional_properties(obj, indent, output)?;
+        self.generate_additional_properties(obj, indent, &mut output)?;
 
         output.push_str(&format!("{}}}", indent_str));
-        Ok(())
+        Ok(output)
     }
 
+    /// Generate properties for object type
     fn generate_properties(
         &mut self,
         obj: &SchemaObject,
@@ -345,7 +426,7 @@ impl SchemaConverter {
         indent: usize,
         output: &mut String,
     ) -> Result<()> {
-        let indent_str = "    ".repeat(indent);
+        let indent_str = Self::create_indent(indent);
         let required_fields: HashSet<_> = obj
             .required
             .as_ref()
@@ -370,6 +451,7 @@ impl SchemaConverter {
         Ok(())
     }
 
+    /// Generate individual property
     fn generate_property(
         &mut self,
         prop_schema: &JsonSchema,
@@ -392,6 +474,21 @@ impl SchemaConverter {
             output.push_str(&constraints);
         }
 
+        // Add format constraints for additionalProperties if they exist
+        if let JsonSchema::Object(prop_obj) = prop_schema {
+            if let Some(AdditionalProperties::Schema(additional_schema)) =
+                &prop_obj.additional_properties
+            {
+                let additional_constraints = self.format_constraints_with_indent(
+                    additional_schema,
+                    &format!("{}    ", indent_str),
+                );
+                if !additional_constraints.is_empty() {
+                    output.push_str(&additional_constraints);
+                }
+            }
+        }
+
         let optional_marker = if is_required { "" } else { "?" };
         output.push_str(&format!(
             "{}    {}: {}{},\n",
@@ -401,32 +498,43 @@ impl SchemaConverter {
         Ok(())
     }
 
+    /// Generate additional properties definition
     fn generate_additional_properties(
         &mut self,
         obj: &SchemaObject,
         indent: usize,
         output: &mut String,
     ) -> Result<()> {
-        let indent_str = "    ".repeat(indent);
+        let indent_str = Self::create_indent(indent);
         if let Some(additional) = &obj.additional_properties {
             let add_type = match additional {
                 AdditionalProperties::Boolean(true) => "any".to_string(),
                 AdditionalProperties::Boolean(false) => return Ok(()), // No additional properties allowed
-                AdditionalProperties::Schema(schema) => self.inline_type(schema)?,
+                AdditionalProperties::Schema(schema) => {
+                    // Add format constraints for additional properties if they exist
+                    if let JsonSchema::Object(_) = schema.as_ref() {
+                        let constraints = self
+                            .format_constraints_with_indent(schema, &format!("{}    ", indent_str));
+                        if !constraints.is_empty() {
+                            output.push_str(&constraints);
+                        }
+                    }
+                    self.inline_type(schema)?
+                }
             };
             output.push_str(&format!("{}    [string]: {},\n", indent_str, add_type));
         }
         Ok(())
     }
 
+    /// Generate array type definition
     fn generate_array_type(
         &mut self,
         obj: &SchemaObject,
         name: &str,
         indent: usize,
-        output: &mut String,
-    ) -> Result<()> {
-        let indent_str = "    ".repeat(indent);
+    ) -> Result<String> {
+        let indent_str = Self::create_indent(indent);
         let item_type = if let Some(items) = &obj.items {
             self.inline_type(items)?
         } else {
@@ -435,15 +543,35 @@ impl SchemaConverter {
 
         let constraints =
             self.format_constraints_with_indent(&JsonSchema::Object(obj.clone()), &indent_str);
-        if !constraints.is_empty() {
-            output.push_str(&constraints);
-        }
 
-        output.push_str(&format!(
-            "{}export type {} = {{ {} }}",
-            indent_str, name, item_type
-        ));
-        Ok(())
+        Ok(format!(
+            "{}{}export type {} = {{ {} }}",
+            constraints, indent_str, name, item_type
+        ))
+    }
+
+    /// Generate enum type definition
+    fn generate_enum_type(
+        &mut self,
+        values: &[serde_json::Value],
+        name: &str,
+        indent_str: &str,
+    ) -> Result<String> {
+        self.generated_types.insert(name.to_string());
+        let union = self.convert_enum(values);
+        Ok(format!("{}export type {} = {}", indent_str, name, union))
+    }
+
+    /// Generate const type definition
+    fn generate_const_type(
+        &mut self,
+        value: &serde_json::Value,
+        name: &str,
+        indent_str: &str,
+    ) -> Result<String> {
+        self.generated_types.insert(name.to_string());
+        let literal = self.convert_const(value);
+        Ok(format!("{}export type {} = {}", indent_str, name, literal))
     }
 
     fn inline_type(&mut self, schema: &JsonSchema) -> Result<String> {
@@ -478,6 +606,7 @@ impl SchemaConverter {
     }
 
     fn inline_composition_types(&mut self, obj: &SchemaObject) -> Result<Option<String>> {
+        // For brevity, keeping the original implementation here
         if let Some(any_of) = &obj.any_of {
             let types: Result<Vec<_>> = any_of.iter().map(|s| self.inline_type(s)).collect();
             return Ok(Some(format!("({})", types?.join(" | "))));
@@ -491,7 +620,6 @@ impl SchemaConverter {
                 || obj.additional_properties.is_some()
                 || obj.required.is_some();
 
-            // If parent schema has its own properties → MERGE with intersection format
             if parent_has_props {
                 let mut merged_props = obj.properties.clone().unwrap_or_default();
                 let mut merged_required = obj.required.clone().unwrap_or_default();
@@ -500,10 +628,8 @@ impl SchemaConverter {
                 for sub in all_of {
                     if let JsonSchema::Object(sub_obj) = sub {
                         if let Some(ref_path) = &sub_obj.ref_ {
-                            // Keep $ref as intersection type
                             ref_types.push(self.resolve_ref(ref_path)?);
                         } else {
-                            // Merge non-ref properties
                             if let Some(sub_props) = &sub_obj.properties {
                                 merged_props.extend(sub_props.clone());
                             }
@@ -514,7 +640,6 @@ impl SchemaConverter {
                     }
                 }
 
-                // Create the merged object part
                 let mut merged_obj = obj.clone();
                 merged_obj.properties = Some(merged_props);
                 merged_obj.required = Some(merged_required);
@@ -525,14 +650,12 @@ impl SchemaConverter {
                 if ref_types.is_empty() {
                     return Ok(Some(merged_part));
                 } else {
-                    // Create intersection: (merged_object & ref_types...)
                     let mut parts = vec![merged_part];
                     parts.extend(ref_types);
                     return Ok(Some(format!("({})", parts.join(" & "))));
                 }
             }
 
-            // No parent properties → INTERSECTION
             let types: Result<Vec<_>> = all_of.iter().map(|s| self.inline_type(s)).collect();
             return Ok(Some(format!("({})", types?.join(" & "))));
         }
@@ -543,13 +666,11 @@ impl SchemaConverter {
         if let Some(type_) = &obj.type_ {
             let types = Self::get_single_types(type_);
 
-            // Handle union types
             if types.len() > 1 {
                 let type_strings = self.map_types_to_strings(&types);
                 return Ok(format!("({})", type_strings.join(" | ")));
             }
 
-            // Handle single type
             let single_type = types[0];
             match single_type {
                 SingleType::String => Ok("string".to_string()),
@@ -622,12 +743,10 @@ impl SchemaConverter {
                     _ => (false, false),
                 });
 
-        // Luau does NOT support numeric literal types → collapse to "number"
         if all_numbers {
             return "number".to_string();
         }
 
-        // Strings are safe → emit literal strings
         if all_strings {
             let parts: Vec<_> = values
                 .iter()
@@ -639,7 +758,6 @@ impl SchemaConverter {
             return parts.join(" | ");
         }
 
-        // Mixed primitive enum → collapse to any valid Luau scalar
         "string | number | boolean | nil".to_string()
     }
 
@@ -654,7 +772,6 @@ impl SchemaConverter {
     }
 
     fn resolve_ref(&self, ref_path: &str) -> Result<String> {
-        // Handle #/definitions/Name or #/$defs/Name
         if let Some(def_name) = ref_path.strip_prefix("#/definitions/") {
             return Ok(def_name.to_case(Case::Pascal));
         }
@@ -668,34 +785,12 @@ impl SchemaConverter {
         )))
     }
 
-    fn handle_composition(
-        &mut self,
-        schemas: &[JsonSchema],
-        name: &str,
-        indent: usize,
-        kind: &str,
-    ) -> Result<String> {
-        let indent_str = "    ".repeat(indent);
-        let types: Result<Vec<_>> = schemas.iter().map(|s| self.inline_type(s)).collect();
-
-        let (separator, comment) = match kind {
-            "allOf" => (" & ", "Intersection type (all conditions must be met)"),
-            "anyOf" => (" | ", "Union type (any of these types)"),
-            "oneOf" => (" | ", "Union type (exactly one of these types)"),
-            _ => (" | ", "Combined type"),
-        };
-
-        self.generated_types.insert(name.to_string());
-        Ok(format!(
-            "{}--- {}\n{}export type {} = {}",
-            indent_str,
-            comment,
-            indent_str,
-            name,
-            types?.join(separator)
-        ))
+    /// Create indent string for given level
+    fn create_indent(indent: usize) -> String {
+        "    ".repeat(indent)
     }
 
+    // Constraint formatting methods remain the same
     fn format_constraints_with_indent(&self, schema: &JsonSchema, indent_str: &str) -> String {
         let mut output = String::new();
 
