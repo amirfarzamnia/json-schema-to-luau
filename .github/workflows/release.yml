@@ -9,21 +9,54 @@ permissions:
   contents: write
 
 jobs:
+  create-release:
+    name: Create release
+    runs-on: ubuntu-latest
+
+    outputs:
+      upload_url: ${{ steps.create_release.outputs.upload_url }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create release
+        id: create_release
+        uses: softprops/action-gh-release@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          draft: false
+
   build:
-    name: Build binaries
-    runs-on: ${{ matrix.os }}
+    needs: create-release
+
     strategy:
+      fail-fast: false
       matrix:
         include:
-          - os: ubuntu-latest
-            target: x86_64-unknown-linux-gnu
-            ext: ""
-          - os: macos-latest
-            target: aarch64-apple-darwin
-            ext: ""
           - os: windows-latest
-            target: x86_64-pc-windows-msvc
-            ext: ".exe"
+            artifact-name: json-schema-to-luau-windows-x86_64
+            cargo-target: x86_64-pc-windows-msvc
+
+          - os: ubuntu-latest
+            artifact-name: json-schema-to-luau-linux-x86_64
+            cargo-target: x86_64-unknown-linux-gnu
+
+          - os: ubuntu-latest
+            artifact-name: json-schema-to-luau-linux-aarch64
+            cargo-target: aarch64-unknown-linux-gnu
+            linker: gcc-aarch64-linux-gnu
+
+          - os: macos-latest
+            artifact-name: json-schema-to-luau-macos-x86_64
+            cargo-target: x86_64-apple-darwin
+
+          - os: macos-latest
+            artifact-name: json-schema-to-luau-macos-aarch64
+            cargo-target: aarch64-apple-darwin
+
+    name: Build binary (${{ matrix.artifact-name }})
+    runs-on: ${{ matrix.os }}
 
     steps:
       - uses: actions/checkout@v4
@@ -32,50 +65,59 @@ jobs:
         uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
-          profile: minimal
+          target: ${{ matrix.cargo-target }}
           override: true
+          profile: minimal
 
-      - name: Add target
-        run: rustup target add ${{ matrix.target }}
-
-      - name: Build
-        run: cargo build --release --target ${{ matrix.target }}
-
-      - name: Archive artifact
+      - name: Install linker
+        if: ${{ matrix.linker != '' }}
         run: |
-          BIN_NAME=json-schema-to-luau${{ matrix.ext }}
-          mkdir artifact
-          cp target/${{ matrix.target }}/release/${BIN_NAME} artifact/
-          cd artifact
-          if [ "${{ runner.os }}" = "Windows" ]; then
-            powershell Compress-Archive -Path "$BIN_NAME" -DestinationPath "$BIN_NAME.zip"
-          else
-            tar czf "$BIN_NAME.tar.gz" "$BIN_NAME"
+          sudo apt update
+          sudo apt install ${{ matrix.linker }}
+          if [ ! -f ".cargo/config.toml" ]; then
+            mkdir .cargo
+            echo "[target.aarch64-unknown-linux-gnu]" > .cargo/config.toml
+            echo 'linker = "aarch64-linux-gnu-gcc"' >> .cargo/config.toml
           fi
+
+      - name: Generate Cargo.lock if needed
         shell: bash
+        run: |
+          if [ ! -f "Cargo.lock" ]; then
+            cargo generate-lockfile
+          fi
+
+      - name: Build binary
+        run: cargo build --locked --release --target ${{ matrix.cargo-target }}
+        env:
+          CARGO_TARGET_DIR: output
+
+      - name: Setup archive
+        shell: bash
+        run: |
+          mkdir -p staging
+          if [ "${{ matrix.os }}" = "windows-latest" ]; then
+            cp "output/${{ matrix.cargo-target }}/release/json-schema-to-luau.exe" staging/
+            cd staging
+            7z a ../release.zip *
+          else
+            cp "output/${{ matrix.cargo-target }}/release/json-schema-to-luau" staging/
+            cd staging
+            zip ../release.zip *
+          fi
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.target }}
-          path: artifact/*
+          name: ${{ matrix.artifact-name }}
+          path: release.zip
 
-  release:
-    name: Create GitHub Release
-    needs: build
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Download artifacts
-        uses: actions/download-artifact@v4
-        with:
-          path: artifacts
-
-      - name: Create release
-        uses: softprops/action-gh-release@v1
-        with:
-          files: artifacts/**/*
+      - name: Upload Binary to Release
+        uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.create-release.outputs.upload_url }}
+          asset_path: release.zip
+          asset_name: ${{ matrix.artifact-name }}.zip
+          asset_content_type: application/zip
