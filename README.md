@@ -233,7 +233,7 @@ let luau = converter.convert_with_name(&schema, "MyType")?;
 
 ---
 
-## ⚡ Performance Notes
+## ⚠️ Performance Notes
 
 - The converter is designed for **codegeneration**, not high-frequency runtime use.
 - `$ref` resolution is single-pass and only supports local fragments.
