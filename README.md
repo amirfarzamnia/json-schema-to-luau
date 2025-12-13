@@ -2,48 +2,65 @@
 
 [<img alt="Crates.io" src="https://img.shields.io/crates/v/json-schema-to-luau?style=flat-square&logo=rust" height="20">](https://crates.io/crates/json-schema-to-luau)
 [<img alt="docs.rs" src="https://img.shields.io/docsrs/json-schema-to-luau?style=flat-square&logo=docs.rs" height="20">](https://docs.rs/json-schema-to-luau)
-[<img alt="GitHub Actions Workflow Status" src="https://img.shields.io/github/actions/workflow/status/amirfarzamnia/json-schema-to-luau/rust.yml?style=flat-square&logo=githubactions&logoColor=%23FFF" height="20">](https://github.com/amirfarzamnia/json-schema-to-luau/actions?query=branch%3Amain)
-[<img alt="Issues" src="https://img.shields.io/github/issues/amirfarzamnia/json-schema-to-luau?style=flat-square&logo=github" height="20">](https://github.com/amirfarzamnia/json-schema-to-luau/issues)
 
-Convert JSON Schema to Luau type definitions with full support for constraints and advanced schema features.
+**Convert JSON Schema to Luau type definitions with full support for constraints and advanced schema features.**
 
-## Features
+---
 
-- ✅ Full JSON Schema support (objects, arrays, primitives, enums, const)
-- ✅ Handles `$ref`, `definitions`, and `$defs`
+## ✨ Features
+
+- ✅ **Full JSON Schema support** (objects, arrays, primitives, enums, const)
+- ✅ Handles **`$ref`, `definitions`, and `$defs`**
 - ✅ Composition support (`allOf`, `anyOf`, `oneOf`)
-- ✅ Constraints preserved as Luau comments (ranges, string limits, patterns, array bounds)
+- ✅ **Constraints preserved** as Luau comments (ranges, string limits, patterns, array bounds)
 - ✅ Required/optional property handling
 - ✅ CLI and library usage
 - ✅ Type-safe conversion with clear errors
 
 ---
 
-## Installation
+## ⬇️ Installation
+
+You can install `json-schema-to-luau` via **Cargo** or download a pre-built binary from **GitHub Releases**.
+
+### Cargo (Library)
+
+To use as a Rust library in your project:
 
 ```bash
 cargo add json-schema-to-luau
 ```
 
-CLI:
+### Cargo (CLI)
+
+To install the command-line interface globally:
 
 ```bash
 cargo install json-schema-to-luau
 ```
 
+### GitHub Releases (CLI Binaries)
+
+Pre-compiled binaries for various platforms (Linux, macOS, Windows) are available on the [**GitHub Releases page**](https://github.com/amirfarzamnia/json-schema-to-luau/releases). This is the fastest way to get the CLI without needing a Rust toolchain.
+
 ---
 
-## Usage
+## 🚀 Usage
 
-### CLI
+### Command Line Interface (CLI)
 
 ```bash
+# Convert a file and output to another file
 json-schema-to-luau schema.json -o types.luau
+
+# Read schema from standard input
 cat schema.json | json-schema-to-luau - -o types.luau
-json-schema-to-luau schema.json --type-name MyType
+
+# Specify a custom type name (defaults to 'Root')
+json-schema-to-luau schema.json --type-name MyCustomType
 ```
 
-### Library
+### Rust Library
 
 ```rust
 use json_schema_to_luau::convert_schema;
@@ -67,7 +84,7 @@ fn main() {
 }
 ```
 
-Output:
+**Output:**
 
 ```lua
 export type Root = {
@@ -80,82 +97,60 @@ export type Root = {
 
 ---
 
-# Luau Type Mapping
+## 🛠️ Luau Type Mapping & Behavior
 
-The converter follows Luau’s actual type model. This is important because Luau is **not TypeScript**, and JSON Schema cannot always be represented directly.
+The converter maps JSON Schema concepts to the closest viable Luau types. This is crucial as **Luau is not TypeScript** and has different type system limitations.
 
-| JSON Schema             | Luau Output                                            |
-| ----------------------- | ------------------------------------------------------ |
-| `"string"`              | `string`                                               |
-| `"number"`, `"integer"` | `number`                                               |
-| `"boolean"`             | `boolean`                                              |
-| `"null"`                | `nil`                                                  |
-| `array`                 | `{ T }`                                                |
-| object map              | `{ [string]: T }`                                      |
-| enum (strings)          | `"a" \| "b"`                                           |
-| enum (numbers)          | `number` (Luau cannot represent numeric literal types) |
-| anyOf / oneOf           | union (`A \| B`)                                       |
-| allOf                   | intersection (`A & B`) or merged object                |
+### Primitive Mapping
+
+| JSON Schema             | Luau Output  | Notes                                       |
+| :---------------------- | :----------- | :------------------------------------------ |
+| `"string"`              | `string`     |                                             |
+| `"number"`, `"integer"` | `number`     |                                             |
+| `"boolean"`             | `boolean`    |                                             |
+| `"null"`                | `nil`        | Often combined: `string \| nil`             |
+| enum (strings)          | `"a" \| "b"` | Uses union of literal strings               |
+| enum (numbers)          | `number`     | Luau cannot represent numeric literal types |
+
+### Complex Type Mapping
+
+| JSON Schema       | Luau Output                             | Description                                                       |
+| :---------------- | :-------------------------------------- | :---------------------------------------------------------------- |
+| `array`           | `{ T }`                                 | General array type                                                |
+| object map        | `{ [string]: T }`                       | Objects with `additionalProperties` or no `properties`            |
+| `anyOf` / `oneOf` | union (`A \| B`)                        | `oneOf` exclusivity cannot be enforced in Luau                    |
+| `allOf`           | intersection (`A & B`) or merged object | Intersection for standalone `allOf`, otherwise merged into parent |
+| `$ref`, `$defs`   | `export type Name = ...`                | Always exports named types; never inlines                         |
 
 ---
 
-# Composition Handling
+## 🧩 Composition Handling
 
-### `anyOf`
+### `anyOf` / `oneOf` (Union)
 
-Converted to union:
+Both are converted to a Luau union type, as Luau does not enforce the exclusivity of `oneOf`.
 
 ```lua
 export type T = A | B
 ```
 
-### `oneOf`
+### `allOf` (Intersection / Merging)
 
-Also converted to a union (Luau cannot enforce exclusivity):
-
-```lua
-export type T = A | B
-```
-
-### `allOf`
-
-Two behaviors:
-
-1. **If the parent schema defines properties**, it keeps them and merges with its `allOf` members.
-2. **Otherwise**, converted to an intersection:
-
-```lua
-export type T = A & B
-```
+1.  **If the parent schema defines properties**, `allOf` members are **merged** into the parent object type.
+2.  **Otherwise**, it is converted to a Luau intersection: `export type T = A & B`.
 
 ---
 
-# Definition Resolution
+## 📝 Examples
 
-The converter recognizes:
-
-- `#/definitions/Name`
-- `#/$defs/Name`
-
-Definitions are collected from the root schema if it’s an object. Each definition becomes:
-
-```
-export type PascalName = ...
-```
-
-`$ref` never inlines referenced types.
-
----
-
-# Examples
-
-### Objects
-
-### Nested types
+### Object with Constraints
 
 ```lua
 export type Root = {
-    user: { email: string?, id: number }?,
+    --- @minimum 0
+    --- @maximum 100
+    age: number?,
+    name: string,
 }
 ```
 
@@ -173,7 +168,7 @@ export type Root = { string }
 export type Root = "red" | "green" | "blue"
 ```
 
-### `$ref` and definitions
+### Definitions (`$ref` / `$defs`)
 
 ```lua
 export type Root = {
@@ -186,104 +181,49 @@ export type Person = {
 }
 ```
 
-### Number constraints
-
-```lua
---- @minimum 0
---- @maximum 100
---- @multipleOf 5
-export type Root = number
-```
-
-### Composition
-
-```lua
---- Union type (any of these types)
-export type Root = string | number
-```
+_Note: Referenced types like `Person` are always exported as named types._
 
 ---
 
-# Advanced Examples
+## 🛑 Limitations
 
-### allOf merging
+Luau has a simpler type system than JSON Schema. The following features degrade gracefully (i.e., they are ignored or simplified):
 
-JSON Schema:
-
-```json
-{
-  "type": "object",
-  "properties": { "id": { "type": "number" } },
-  "allOf": [
-    { "type": "object", "properties": { "name": { "type": "string" } } }
-  ]
-}
-```
-
-Output:
-
-```lua
-export type Root = {
-    id: number?,
-    name: string?,
-}
-```
-
-### Inline vs Exported Types
-
-Properties become inline types unless they come from `$ref`. Example:
-
-```lua
-user: { id: number, name: string }?
-```
-
-Definitions always get a named export.
+- **Tuple schemas** (`items: [A, B, C]`) → _Not supported_.
+- **Conditionals** (`if` / `then` / `else`) → _Ignored_.
+- **Dependencies** (`dependencies`, `dependentSchemas`, `dependentRequired`) → _Ignored_.
+- **Pattern matching** (`patternProperties`, `propertyNames`) → _Ignored/Simplified_.
+- **Remote `$ref` resolution** → Only local fragments (`#/...`) are supported.
+- **Number literal enums** → Collapse to `number`.
+- **Exclusive constraints** → Cannot be enforced, only documented via comments.
 
 ---
 
-# Limitations
+## 💡 Troubleshooting & FAQ
 
-Luau has a simpler type system than JSON Schema, so some features degrade gracefully:
+#### “Why is my numeric enum turned into `number`?”
 
-- Tuple schemas (`items: [A, B, C]`) → not supported
-- `if` / `then` / `else` → ignored
-- `dependencies`, `dependentSchemas`, `dependentRequired` → ignored
-- `patternProperties` → ignored (falls back to additionalProperties)
-- `propertyNames` → ignored
-- No remote `$ref` resolution (only local fragments)
-- Number literal enums collapse to `number`
-- Regex patterns are preserved as comments only
-- Exclusive constraints cannot be enforced in Luau, only documented
+Luau does not support numeric literal types (e.g., `1 | 2 | 3`). Numeric enums from JSON Schema must degrade to the base type `number`.
 
----
+#### “Why does my object turn into `{ [string]: any }`?”
 
-# Troubleshooting
+This typically happens when the schema is an object that allows arbitrary properties but does not explicitly declare any of its own (`properties` is absent or empty, and `additionalProperties` is the default `true`).
 
-### “Why is my enum turned into `number`?”
+#### “Why is a type inlined instead of exported?”
 
-Luau does not support numeric literal types. JSON Schema numeric enums degrade to `number`.
-
-### “Why does my object turn into `{ [string]: any }`?”
-
-This happens when the schema does not declare properties, but allows objects.
-
-### “Why isn’t my referenced type exported?”
-
-Only root-level `definitions` / `$defs` are collected.
-
-### “Why is a type inlined instead of exported?”
-
-Only `$ref` produces named types. Everything else is intentionally inline.
+Only types resolved via a `$ref` to a root-level definition (`#/definitions/Name` or `#/$defs/Name`) are exported as named types. All other complex types (like nested objects or arrays) are intentionally inlined for conciseness.
 
 ---
 
-# API Reference
+## 📦 API Reference (Rust)
 
 ### `convert_schema(&str) -> Result<String>`
 
-Parses JSON Schema text and returns Luau types.
+The simplest function. Parses the JSON Schema string and returns the resulting Luau type definitions.
 
 ### `SchemaConverter`
+
+For advanced usage (e.g., reusing definitions across multiple calls):
 
 ```rust
 let mut converter = SchemaConverter::new();
@@ -291,18 +231,15 @@ let luau = converter.convert(&schema)?;
 let luau = converter.convert_with_name(&schema, "MyType")?;
 ```
 
-Useful for advanced embedding or reusing definitions.
+---
+
+## ⚡ Performance Notes
+
+- The converter is designed for **codegeneration**, not high-frequency runtime use.
+- `$ref` resolution is single-pass and only supports local fragments.
 
 ---
 
-# Performance Notes
+## 📄 License
 
-- The converter is designed for codegen, not high-frequency runtime use.
-- Converting large schemas repeatedly may allocate many intermediate objects.
-- `$ref` resolution is single-pass and local only.
-
----
-
-# License
-
-[MIT](LICENSE) License
+[MIT](https://www.google.com/search?q=LICENSE) License
