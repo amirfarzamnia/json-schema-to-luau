@@ -6,15 +6,7 @@ authors = ["Amir Farzamnia <amirfarzamnia@proton.me>"]
 license = "MIT"
 description = "Convert JSON Schema to Luau type definitions with full support for constraints and advanced schema features."
 repository = "https://github.com/amirfarzamnia/json-schema-to-luau"
-keywords = [
-    "schema",
-    "json",
-    "openapi",
-    "jsonschema",
-    "luau",
-    "type-generation",
-    "codegen",
-]
+keywords = ["schema", "jsonschema", "luau", "type-generation", "codegen"]
 categories = ["development-tools", "parser-implementations"]
 readme = "README.md"
 
