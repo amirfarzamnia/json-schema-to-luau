@@ -69,8 +69,7 @@ jobs:
       - name: Build binary
         env:
           CARGO_TARGET_DIR: output
-        run: |
-          cargo build --locked --release --target ${{ matrix.cargo-target }}
+        run: cargo build --locked --release --target ${{ matrix.cargo-target }}
 
       - name: Package binary
         shell: bash
@@ -88,8 +87,24 @@ jobs:
             zip "../${{ matrix.artifact-name }}.zip" *
           fi
 
-      - name: Upload binary to GitHub Release
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact-name }}
+          path: ${{ matrix.artifact-name }}.zip
+
+  release:
+    name: Publish GitHub Release
+    runs-on: ubuntu-latest
+    needs: build
+
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+
+      - name: Publish release
         uses: softprops/action-gh-release@v2
         with:
-          files: ${{ matrix.artifact-name }}.zip
+          files: |
+            **/*.zip
           generate_release_notes: true
