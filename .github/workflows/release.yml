@@ -9,20 +9,8 @@ permissions:
   contents: write
 
 jobs:
-  create-release:
-    name: Create GitHub Release
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Create release
-        uses: softprops/action-gh-release@v2
-        with:
-          draft: false
-          generate_release_notes: true
-
   build:
     name: Build binary (${{ matrix.artifact-name }})
-    needs: create-release
     runs-on: ${{ matrix.os }}
 
     strategy:
@@ -104,3 +92,4 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: ${{ matrix.artifact-name }}.zip
+          generate_release_notes: true
