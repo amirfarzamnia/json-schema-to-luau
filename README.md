@@ -21,27 +21,51 @@
 
 ## ⬇️ Installation
 
-You can install `json-schema-to-luau` via **Cargo** or download a pre-built binary from **GitHub Releases**.
+You can install `json-schema-to-luau` in several ways, depending on how you plan to use it.
 
-### Cargo (Library)
+### 🚀 Rokit (Recommended for Roblox/Luau projects)
 
-To use as a Rust library in your project:
+If you use **[Rokit](https://github.com/rojo-rbx/rokit)** for toolchain management, this is the easiest and most reproducible way to install the CLI.
 
 ```bash
-cargo add json-schema-to-luau
+rokit add amirfarzamnia/json-schema-to-luau
 ```
 
-### Cargo (CLI)
+This will install `json-schema-to-luau` and pin it in your `rokit.toml`, ensuring consistent versions across your team and CI.
 
-To install the command-line interface globally:
+You can also install it globally.
+
+```bash
+rokit add amirfarzamnia/json-schema-to-luau --global
+```
+
+This will install `json-schema-to-luau` globally, making it available system-wide.
+
+### 🧱 GitHub Releases (Pre-built CLI Binaries)
+
+Pre-compiled binaries for Linux, macOS, and Windows are available on the **GitHub Releases** page:
+
+👉 [https://github.com/amirfarzamnia/json-schema-to-luau/releases](https://github.com/amirfarzamnia/json-schema-to-luau/releases)
+
+This is the fastest way to get the CLI if you don’t want to install Rust or Rokit.
+
+### 📦 Cargo (CLI)
+
+To install the command-line interface globally using Cargo:
 
 ```bash
 cargo install json-schema-to-luau
 ```
 
-### GitHub Releases (CLI Binaries)
+This requires a Rust toolchain to be installed.
 
-Pre-compiled binaries for various platforms (Linux, macOS, Windows) are available on the [**GitHub Releases page**](https://github.com/amirfarzamnia/json-schema-to-luau/releases). This is the fastest way to get the CLI without needing a Rust toolchain.
+### 📚 Cargo (Library)
+
+To use `json-schema-to-luau` as a Rust library in your project:
+
+```bash
+cargo add json-schema-to-luau
+```
 
 ---
 
