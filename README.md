@@ -47,8 +47,6 @@ Pre-compiled binaries for Linux, macOS, and Windows are available on the **GitHu
 
 👉 [https://github.com/amirfarzamnia/json-schema-to-luau/releases](https://github.com/amirfarzamnia/json-schema-to-luau/releases)
 
-This is the fastest way to get the CLI if you don’t want to install Rust or Rokit.
-
 ### 📦 Cargo (CLI)
 
 To install the command-line interface globally using Cargo:
@@ -76,9 +74,6 @@ cargo add json-schema-to-luau
 ```bash
 # Convert a file and output to another file
 json-schema-to-luau schema.json -o types.luau
-
-# Read schema from standard input
-cat schema.json | json-schema-to-luau - -o types.luau
 
 # Specify a custom type name (defaults to 'Root')
 json-schema-to-luau schema.json --type-name MyCustomType
