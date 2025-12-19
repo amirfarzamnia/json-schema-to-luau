@@ -3,8 +3,11 @@ updates:
   - package-ecosystem: "cargo"
     directory: "/"
     schedule:
-      interval: "weekly"
+      interval: "monthly"
     groups:
         cargo-dependencies:
           patterns:
             - "*"
+    commit-message:
+      prefix: "chore"
+      include: "scope"
