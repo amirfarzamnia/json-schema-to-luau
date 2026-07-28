@@ -14,9 +14,6 @@ This repository is now a **public archive** and will not receive further updates
 
 # JSON Schema to Luau
 
-[<img alt="Crates.io" src="https://img.shields.io/crates/v/json-schema-to-luau?style=flat-square&logo=rust" height="20">](https://crates.io/crates/json-schema-to-luau)
-[<img alt="docs.rs" src="https://img.shields.io/docsrs/json-schema-to-luau?style=flat-square&logo=docs.rs" height="20">](https://docs.rs/json-schema-to-luau)
-
 **Convert JSON Schema to Luau type definitions with full support for constraints and advanced schema features.**
 
 ---
