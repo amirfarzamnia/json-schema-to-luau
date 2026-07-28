@@ -9,6 +9,7 @@ repository = "https://github.com/amirfarzamnia/json-schema-to-luau"
 keywords = ["schema", "jsonschema", "luau", "type-generation", "codegen"]
 categories = ["development-tools", "parser-implementations"]
 readme = "README.md"
+deprecated = "This crate has been deprecated. Use jsonschema-luau instead: https://github.com/streamier-labs/jsonschema-luau"
 
 [dependencies]
 serde = { version = "1.0", features = ["derive"] }
