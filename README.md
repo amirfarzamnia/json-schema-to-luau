@@ -1,19 +1,25 @@
+---
+
+<div align="center">
+
+# ⚠️ Repository Archived
+
+This project has been moved to:
+
+**https://github.com/streamier-labs/jsonschema-luau**
+
+This repository is now a **public archive** and will not receive further updates.
+
+</div>
+
+---
+
 # JSON Schema to Luau
 
 [<img alt="Crates.io" src="https://img.shields.io/crates/v/json-schema-to-luau?style=flat-square&logo=rust" height="20">](https://crates.io/crates/json-schema-to-luau)
 [<img alt="docs.rs" src="https://img.shields.io/docsrs/json-schema-to-luau?style=flat-square&logo=docs.rs" height="20">](https://docs.rs/json-schema-to-luau)
 
 **Convert JSON Schema to Luau type definitions with full support for constraints and advanced schema features.**
-
----
-
-> 🚨 **This repository has been moved**
->
-> Development has moved to the new repository:
->
-> 👉 https://github.com/streamier-labs/jsonschema-luau
->
-> This repository is now a **public archive** and is no longer actively maintained.
 
 ---
 
