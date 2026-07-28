@@ -7,6 +7,16 @@
 
 ---
 
+> 🚨 **This repository has been moved**
+>
+> Development has moved to the new repository:
+>
+> 👉 https://github.com/streamier-labs/jsonschema-luau
+>
+> This repository is now a **public archive** and is no longer actively maintained.
+
+---
+
 ## ✨ Features
 
 - ✅ **Full JSON Schema support** (objects, arrays, primitives, enums, const)
